@@ -115,7 +115,7 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
 
 if __name__ == "__main__":
     # Test the module
-    base_path = '/project/joycelab-niall/ruin_repository/'
+    base_path = '/project/joycelab-niall/ruin_repo/'
     shapefiles = load_shapefiles(base_path)
     known_sites = load_site_locations(base_path)
     raster_paths = get_raster_paths(base_path, limit=2)  # Test with first 2 rasters
