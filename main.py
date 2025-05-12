@@ -155,4 +155,5 @@ def main():
             save_dir=results_dir
         )
         
-        # Evaluate results
+if __name__ == "__main__":
+    main()
