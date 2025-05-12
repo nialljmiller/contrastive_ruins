@@ -15,7 +15,7 @@ from evaluation import evaluate_results, visualize_results, create_results_repor
 def setup_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Archaeological Ruins Detection')
-    parser.add_argument('--data_path', type=str, default='/media/usb',
+    parser.add_argument('--data_path', type=str, default='/project/joycelab-niall/ruin_repo',
                         help='Path to data directory')
     parser.add_argument('--output_dir', type=str, default='output',
                         help='Directory to save results')
