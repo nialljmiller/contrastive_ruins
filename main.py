@@ -17,7 +17,7 @@ def setup_args():
     parser = argparse.ArgumentParser(description='Archaeological Ruins Detection')
     parser.add_argument('--data_path', type=str, default='/project/joycelab-niall/ruin_repo',
                         help='Path to data directory')
-    parser.add_argument('--output_dir', type=str, default='output',
+    parser.add_argument('--output_dir', type=str, default='/project/joycelab-niall/ruin_repo/output',
                         help='Directory to save results')
     parser.add_argument('--mode', type=str, choices=['train', 'detect', 'full'], default='full',
                         help='Mode: train model, detect ruins, or run full pipeline')
