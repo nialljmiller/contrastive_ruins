@@ -136,15 +136,23 @@ def reshape_for_model(patches):
     # Ensure we have float data for model input
     return patches.astype(np.float32)
 
-def create_contrastive_pairs(patches, patch_locations, sites_gdf=None, positive_ratio=0.3, save_dir=None):
+
+
+# Replace create_contrastive_pairs in data_preparation.py with this self-supervised version
+
+def create_contrastive_pairs(patches, patch_locations, sites_gdf=None, positive_ratio=0.5, save_dir=None):
     """
-    Create positive and negative pairs for contrastive learning
+    Create positive and negative pairs for SELF-SUPERVISED contrastive learning
+    
+    For self-supervised learning:
+    - Positive pairs: Same patch with different augmentations
+    - Negative pairs: Different patches
     
     Args:
         patches: Array of extracted patches
-        patch_locations: List of geometries representing patch locations
-        sites_gdf: GeoDataFrame of known archaeological sites (optional)
-        positive_ratio: Ratio of positive pairs in the dataset
+        patch_locations: List of geometries (not used in self-supervised)
+        sites_gdf: Not used in self-supervised learning
+        positive_ratio: Ratio of positive to total pairs
         save_dir: Directory to save pairs (optional)
         
     Returns:
@@ -152,51 +160,42 @@ def create_contrastive_pairs(patches, patch_locations, sites_gdf=None, positive_
         X2: Second elements of pairs
         labels: 1 for positive pairs, 0 for negative pairs
     """
-    # If sites_gdf is provided, use it to identify site patches
-    if sites_gdf is not None:
-        # Convert patch locations to GeoDataFrame
-        patches_gdf = gpd.GeoDataFrame(geometry=patch_locations)
-        patches_gdf.crs = sites_gdf.crs  # Ensure same coordinate system
-        
-        # Find patches that intersect with known sites
-        intersects = gpd.sjoin(patches_gdf, sites_gdf, predicate='intersects', how='left')
-        site_patches_idx = intersects.dropna().index.tolist()
-        non_site_patches_idx = list(set(range(len(patches))) - set(site_patches_idx))
-    else:
-        # No site information provided, treat all patches as potential sites
-        site_patches_idx = list(range(len(patches)))
-        non_site_patches_idx = site_patches_idx  # Same indices for negative pairs
+    print("Creating self-supervised contrastive pairs...")
+    print("- Positive pairs: Same patch + different augmentations")
+    print("- Negative pairs: Different patches")
     
-    # Create positive pairs from patches containing sites
     X1_positive = []
     X2_positive = []
-    for idx in tqdm(site_patches_idx, desc="Creating positive pairs"):
+    
+    # Create positive pairs: same patch with different augmentations
+    for idx in tqdm(range(len(patches)), desc="Creating positive pairs"):
         patch = patches[idx]
         # Normalize patch
         patch = normalize_patch(patch)
         
-        # For positive pairs, apply requested augmentations
-        # 1. Create a version with jitter and slight rotation
-        augmented1 = perturb_patch(patch, ['jitter', 'slight_rotate'])
-        
-        # 2. Create another version with random 25deg rotation and noise
-        augmented2 = perturb_patch(patch, ['random_rotate', 'noise'])
+        # Create two different augmented versions of the same patch
+        augmented1 = perturb_patch(patch, ['jitter', 'slight_rotate', 'noise'])
+        augmented2 = perturb_patch(patch, ['random_rotate', 'flip', 'brightness'])
         
         X1_positive.append(augmented1)
         X2_positive.append(augmented2)
     
-    # Create negative pairs
-    n_negative_pairs = int(len(site_patches_idx) * (1 - positive_ratio) / positive_ratio)
+    # Calculate number of negative pairs based on positive_ratio
+    n_positive = len(X1_positive)
+    n_negative = int(n_positive * (1 - positive_ratio) / positive_ratio)
     
     X1_negative = []
     X2_negative = []
-    for _ in tqdm(range(n_negative_pairs), desc="Creating negative pairs"):
-        # For negative pairs, select two different patches
-        idx1, idx2 = random.sample(non_site_patches_idx, 2)
+    
+    # Create negative pairs: different patches
+    for _ in tqdm(range(n_negative), desc="Creating negative pairs"):
+        # Select two different random patches
+        idx1, idx2 = random.sample(range(len(patches)), 2)
+        
         patch1 = normalize_patch(patches[idx1])
         patch2 = normalize_patch(patches[idx2])
         
-        # Apply random augmentations to both negative examples
+        # Apply augmentations to both patches
         augmented1 = perturb_patch(patch1)
         augmented2 = perturb_patch(patch2)
         
@@ -207,8 +206,8 @@ def create_contrastive_pairs(patches, patch_locations, sites_gdf=None, positive_
     X1 = np.array(X1_positive + X1_negative)
     X2 = np.array(X2_positive + X2_negative)
     labels = np.concatenate([
-        np.ones(len(X1_positive)),
-        np.zeros(len(X1_negative))
+        np.ones(len(X1_positive)),   # 1 for positive pairs (same patch)
+        np.zeros(len(X1_negative))   # 0 for negative pairs (different patches)
     ])
     
     # Reshape for model input
@@ -216,6 +215,7 @@ def create_contrastive_pairs(patches, patch_locations, sites_gdf=None, positive_
     X2 = reshape_for_model(X2)
     
     print(f"Created {len(X1_positive)} positive pairs and {len(X1_negative)} negative pairs")
+    print(f"Total training pairs: {len(X1)}")
     
     # Save pairs if directory is provided
     if save_dir is not None:
@@ -223,6 +223,7 @@ def create_contrastive_pairs(patches, patch_locations, sites_gdf=None, positive_
         np.save(os.path.join(save_dir, "X1.npy"), X1)
         np.save(os.path.join(save_dir, "X2.npy"), X2)
         np.save(os.path.join(save_dir, "labels.npy"), labels)
+        print(f"Saved training pairs to {save_dir}")
     
     return X1, X2, labels
 

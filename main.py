@@ -87,15 +87,16 @@ def main():
             save_dir=patch_dir
         )
         
-        # Create contrastive pairs
-        print("Creating contrastive pairs...")
+        # Create contrastive pairs for SELF-SUPERVISED learning
+        print("Creating self-supervised contrastive pairs...")
+        print("Note: Not using known site locations - this is purely self-supervised")
         X1, X2, labels = create_contrastive_pairs(
             patches, 
             patch_locations, 
-            sites,
+            sites_gdf=None,  # Don't use sites for self-supervised learning
             save_dir=patch_dir
         )
-        
+
         # Determine input shape
         if len(X1.shape) == 4:
             input_shape = X1.shape[1:]
