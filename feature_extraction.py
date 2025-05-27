@@ -21,26 +21,13 @@ def normalize_patch(patch):
     
     return normalized
 
-def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_size=32, save_dir=None):
+
+def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_size=16, save_dir=None):
     """
-    Extract features from a raster using sliding window approach
-    
-    Args:
-        encoder: Trained encoder model
-        raster_path: Path to raster file
-        patch_size: Size of patches to extract
-        stride: Stride for sliding window
-        batch_size: Batch size for feature extraction
-        save_dir: Directory to save features (optional)
-        
-    Returns:
-        features: Extracted features
-        locations: Geometries of patch locations
-        patches: Extracted patches (if keep_patches is True)
+    Extract features from a raster using sliding window approach - MEMORY OPTIMIZED
     """
     features = []
     locations = []
-    all_patches = []
     
     try:
         with rasterio.open(raster_path) as src:
@@ -83,7 +70,7 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
                     # Add to current batch
                     current_batch.append(patch)
                     current_locations.append(geometry)
-                    all_patches.append(patch)
+                    # REMOVED: all_patches.append(patch)  # This was eating memory!
                     
                     # Process batch when it reaches the specified size
                     if len(current_batch) >= batch_size:
@@ -97,9 +84,10 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
                         features.extend(batch_features)
                         locations.extend(current_locations)
                         
-                        # Reset batch
+                        # Reset batch AND clear memory
                         current_batch = []
                         current_locations = []
+                        del batch_array, batch_features  # Explicit cleanup
             
             # Process remaining patches
             if current_batch:
@@ -111,6 +99,9 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
                 batch_features = encoder.predict(batch_array, verbose=0)
                 features.extend(batch_features)
                 locations.extend(current_locations)
+                
+                # Clean up
+                del batch_array, batch_features
     
     except Exception as e:
         print(f"Error extracting features from {raster_path}: {e}")
@@ -123,14 +114,9 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
         os.makedirs(save_dir, exist_ok=True)
         basename = os.path.splitext(os.path.basename(raster_path))[0]
         np.save(os.path.join(save_dir, f"{basename}_features.npy"), features)
-        
-        # Save a sample of patches for visualization
-        if all_patches:
-            sample_patches = all_patches[:min(100, len(all_patches))]
-            np.save(os.path.join(save_dir, f"{basename}_sample_patches.npy"), sample_patches)
     
     print(f"Extracted {len(features)} feature vectors from {os.path.basename(raster_path)}")
-    return features, locations, all_patches
+    return features, locations, []  # Return empty list instead of all_patches
 
 def detect_anomalies(features, locations, method='iforest', contamination=0.05, 
                      n_clusters=5, visualize=True, save_dir=None):
