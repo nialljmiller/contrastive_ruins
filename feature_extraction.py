@@ -3,6 +3,7 @@ import rasterio
 import os
 from shapely.geometry import box
 from tqdm import tqdm
+import torch
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
@@ -74,13 +75,14 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
                     
                     # Process batch when it reaches the specified size
                     if len(current_batch) >= batch_size:
-                        # Prepare batch for encoder
                         batch_array = np.array(current_batch)
-                        if len(batch_array.shape) == 3:  # Add channel dimension for grayscale
+                        if len(batch_array.shape) == 3:
                             batch_array = np.expand_dims(batch_array, axis=-1)
-                        
-                        # Extract features
-                        batch_features = encoder.predict(batch_array, verbose=0)
+                        batch_tensor = torch.from_numpy(batch_array).float()
+                        if batch_tensor.ndim == 4:
+                            batch_tensor = batch_tensor.permute(0, 3, 1, 2)
+                        with torch.no_grad():
+                            batch_features = encoder(batch_tensor).cpu().numpy()
                         features.extend(batch_features)
                         locations.extend(current_locations)
                         
@@ -92,11 +94,13 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
             # Process remaining patches
             if current_batch:
                 batch_array = np.array(current_batch)
-                if len(batch_array.shape) == 3:  # Add channel dimension for grayscale
+                if len(batch_array.shape) == 3:
                     batch_array = np.expand_dims(batch_array, axis=-1)
-                
-                # Extract features
-                batch_features = encoder.predict(batch_array, verbose=0)
+                batch_tensor = torch.from_numpy(batch_array).float()
+                if batch_tensor.ndim == 4:
+                    batch_tensor = batch_tensor.permute(0, 3, 1, 2)
+                with torch.no_grad():
+                    batch_features = encoder(batch_tensor).cpu().numpy()
                 features.extend(batch_features)
                 locations.extend(current_locations)
                 
