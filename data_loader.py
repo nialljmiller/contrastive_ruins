@@ -113,6 +113,57 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
     print(f"Successfully extracted {len(patches)} patches")
     return np.array(patches), patch_locations, patch_sources
 
+def sample_site_patches(raster_paths, sites_gdf, patch_size=256, save_dir=None):
+    """Extract patches centered on known site locations."""
+    patches = []
+    patch_locations = []
+    patch_sources = []
+
+    for idx, site in sites_gdf.iterrows():
+        point = site.geometry
+
+        for raster_path in raster_paths:
+            try:
+                with rasterio.open(raster_path) as src:
+                    bounds = box(*src.bounds)
+                    if not point.within(bounds):
+                        continue
+
+                    row, col = src.index(point.x, point.y)
+                    row_start = max(0, row - patch_size // 2)
+                    col_start = max(0, col - patch_size // 2)
+                    row_start = min(row_start, src.height - patch_size)
+                    col_start = min(col_start, src.width - patch_size)
+
+                    window = ((row_start, row_start + patch_size), (col_start, col_start + patch_size))
+                    patch = src.read(window=window)
+
+                    if np.any(patch == src.nodata) or np.all(patch == 0):
+                        continue
+
+                    if patch.shape[0] == 1:
+                        patch = patch[0]
+
+                    x_min, y_max = src.transform * (col_start, row_start)
+                    x_max, y_min = src.transform * (col_start + patch_size, row_start + patch_size)
+
+                    patches.append(patch)
+                    patch_locations.append(box(x_min, y_min, x_max, y_max))
+                    patch_sources.append(os.path.basename(raster_path))
+
+                    if save_dir is not None:
+                        os.makedirs(save_dir, exist_ok=True)
+                        patch_filename = f"site_patch_{idx}.npy"
+                        np.save(os.path.join(save_dir, patch_filename), patch)
+
+                    break
+            except Exception as e:
+                print(f"Error extracting site patch from {raster_path}: {e}")
+                continue
+
+    print(f"Extracted {len(patches)} site patches")
+    return np.array(patches), patch_locations, patch_sources
+
 if __name__ == "__main__":
     # Test the module
     base_path = '/project/joycelab-niall/ruin_repo/'
