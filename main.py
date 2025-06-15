@@ -10,6 +10,7 @@ from data_preparation import create_contrastive_pairs, load_contrastive_pairs
 from model import train_siamese_model, load_models
 from feature_extraction import extract_features, detect_anomalies
 from evaluation import evaluate_results, visualize_results, create_results_report
+from visualization import plot_latent_space, plot_training_loss
 
 def setup_args():
     """Parse command line arguments"""
@@ -79,10 +80,10 @@ def main():
         
         # Sample random patches
         print(f"Sampling {args.n_samples} random patches from {len(raster_paths)} raster files...")
-        patches, patch_locations, _ = sample_random_patches(
-            raster_paths, 
-            patch_size=args.patch_size, 
-            n_samples=args.n_samples, 
+        patches, patch_locations, patch_sources = sample_random_patches(
+            raster_paths,
+            patch_size=args.patch_size,
+            n_samples=args.n_samples,
             save_dir=patch_dir
         )
         
@@ -102,6 +103,17 @@ def main():
             X1, X2, labels,
             epochs=args.epochs,
             save_dir=model_dir
+        )
+        plot_training_loss(history, os.path.join(results_dir, "training_loss.png"))
+
+        # Visualize latent space without and with patch source labels
+        plot_latent_space(encoder, patches, output_dir=results_dir)
+        plot_latent_space(
+            encoder,
+            patches,
+            patch_sources=patch_sources,
+            output_dir=results_dir,
+            prefix="latent_space_features",
         )
     else:
         # Load pre-trained models
