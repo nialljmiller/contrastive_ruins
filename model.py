@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+from typing import Optional
 import matplotlib.pyplot as plt
 
 
@@ -117,8 +118,12 @@ def train_siamese_model(X1: np.ndarray,
     return encoder, model, history
 
 
-def load_models(save_dir: str = "models"):
+
+def load_models(save_dir: str = "models", device: Optional[torch.device] = None):
     """Load saved PyTorch models."""
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     encoder = Encoder()
     model = SiameseNetwork(encoder)
     encoder_path = os.path.join(save_dir, "encoder.pt")
@@ -127,7 +132,13 @@ def load_models(save_dir: str = "models"):
         encoder.load_state_dict(torch.load(encoder_path, map_location="cpu"))
     if os.path.exists(siamese_path):
         model.load_state_dict(torch.load(siamese_path, map_location="cpu"))
+
+    encoder.to(device)
+    model.to(device)
     model.encoder = encoder
+    encoder.eval()
+    model.eval()
+    
     return encoder, model
 
 

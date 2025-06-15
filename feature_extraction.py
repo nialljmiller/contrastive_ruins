@@ -29,6 +29,13 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
     """
     features = []
     locations = []
+
+    # Determine device from encoder and set eval mode if applicable
+    device = torch.device("cpu")
+    if isinstance(encoder, torch.nn.Module):
+        device = next(encoder.parameters()).device
+        encoder.to(device)
+        encoder.eval()
     
     try:
         with rasterio.open(raster_path) as src:
@@ -81,6 +88,7 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
                         batch_tensor = torch.from_numpy(batch_array).float()
                         if batch_tensor.ndim == 4:
                             batch_tensor = batch_tensor.permute(0, 3, 1, 2)
+
                         with torch.no_grad():
                             batch_features = encoder(batch_tensor).cpu().numpy()
                         features.extend(batch_features)
@@ -99,6 +107,7 @@ def extract_features(encoder, raster_path, patch_size=256, stride=128, batch_siz
                 batch_tensor = torch.from_numpy(batch_array).float()
                 if batch_tensor.ndim == 4:
                     batch_tensor = batch_tensor.permute(0, 3, 1, 2)
+
                 with torch.no_grad():
                     batch_features = encoder(batch_tensor).cpu().numpy()
                 features.extend(batch_features)
