@@ -6,6 +6,19 @@ from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 
+
+def plot_training_loss(history, output_path):
+    """Save a plot of training loss over epochs."""
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    plt.figure(figsize=(8, 4))
+    plt.plot(history, marker="o")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training Loss")
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.close()
+
 def _prepare_batch(patches):
     batch = patches.astype(np.float32)
     if batch.ndim == 3:  # N,H,W

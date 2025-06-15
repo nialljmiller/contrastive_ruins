@@ -10,7 +10,8 @@ from data_preparation import create_contrastive_pairs, load_contrastive_pairs
 from model import train_siamese_model, load_models
 from feature_extraction import extract_features, detect_anomalies
 from evaluation import evaluate_results, visualize_results, create_results_report
-from visualization import plot_latent_space
+from visualization import plot_latent_space, plot_training_loss
+
 
 def setup_args():
     """Parse command line arguments"""
@@ -104,6 +105,8 @@ def main():
             epochs=args.epochs,
             save_dir=model_dir
         )
+
+        plot_training_loss(history, os.path.join(results_dir, "training_loss.png"))
 
         # Visualize latent space without and with patch source labels
         plot_latent_space(encoder, patches, output_dir=results_dir)
