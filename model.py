@@ -1,181 +1,154 @@
-import tensorflow as tf
-from tensorflow.keras import layers, Model, optimizers
-from tensorflow.keras.applications import ResNet50
-import numpy as np
 import os
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+from typing import Optional
 import matplotlib.pyplot as plt
 
-def create_encoder(input_shape=(256, 256, 1), embedding_dim=128):
-    """
-    Create an encoder model to extract features from patches
-    
-    Args:
-        input_shape: Shape of input images (height, width, channels)
-        embedding_dim: Dimension of the output embedding
-        
-    Returns:
-        encoder: Keras Model that outputs embeddings
-    """
-    # Use appropriate number of channels for input shape
-    if input_shape[-1] == 1:
-        # For single-channel data, create a custom model
-        inputs = layers.Input(shape=input_shape)
-        x = layers.Conv2D(32, 3, activation='relu', padding='same')(inputs)
-        x = layers.MaxPooling2D()(x)
-        x = layers.Conv2D(64, 3, activation='relu', padding='same')(x)
-        x = layers.MaxPooling2D()(x)
-        x = layers.Conv2D(128, 3, activation='relu', padding='same')(x)
-        x = layers.MaxPooling2D()(x)
-        x = layers.Conv2D(256, 3, activation='relu', padding='same')(x)
-        x = layers.GlobalAveragePooling2D()(x)
-        x = layers.Dense(embedding_dim)(x)
-        x = layers.LayerNormalization()(x)
-        encoder = Model(inputs=inputs, outputs=x, name="encoder")
-    else:
-        # For RGB data, use a pre-trained model
-        base_model = ResNet50(include_top=False, weights='imagenet', input_shape=input_shape)
-        x = base_model.output
-        x = layers.GlobalAveragePooling2D()(x)
-        x = layers.Dense(embedding_dim)(x)
-        x = layers.LayerNormalization()(x)
-        encoder = Model(inputs=base_model.input, outputs=x, name="encoder")
-    
-    return encoder
 
-def contrastive_loss(y_true, y_pred, margin=1.0):
-    """
-    Contrastive loss function for Siamese network
-    
-    Args:
-        y_true: Ground truth labels (1 for similar, 0 for dissimilar)
-        y_pred: Predicted distance between pairs
-        margin: Margin for negative pairs
-        
-    Returns:
-        loss: Contrastive loss value
-    """
-    # Convert to float32 for numerical stability
-    y_true = tf.cast(y_true, tf.float32)
-    
-    # Calculate loss for similar pairs (y_true==1): d^2
-    positive_loss = y_true * tf.square(y_pred)
-    
-    # Calculate loss for dissimilar pairs (y_true==0): max(0, margin-d)^2
-    negative_loss = (1 - y_true) * tf.square(tf.maximum(0., margin - y_pred))
-    
-    # Return mean loss
-    return tf.reduce_mean(positive_loss + negative_loss)
+class Encoder(nn.Module):
+    """Simple convolutional encoder."""
 
-def create_siamese_model(encoder, input_shape=(256, 256, 1)):
-    """
-    Create a Siamese network for contrastive learning
-    
-    Args:
-        encoder: Encoder model to use for feature extraction
-        input_shape: Shape of input images
-        
-    Returns:
-        siamese_model: Model that takes pairs of images and outputs distance
-    """
-    input_a = layers.Input(shape=input_shape, name="input_a")
-    input_b = layers.Input(shape=input_shape, name="input_b")
-    
-    # Get embeddings for both inputs
-    embedding_a = encoder(input_a)
-    embedding_b = encoder(input_b)
-    
-    # Calculate Euclidean distance between embeddings
-    distance = layers.Lambda(
-        lambda x: tf.sqrt(tf.reduce_sum(tf.square(x[0] - x[1]), axis=1, keepdims=True)),
-        name="distance"
-    )([embedding_a, embedding_b])
-    
-    # Create model
-    siamese_model = Model(inputs=[input_a, input_b], outputs=distance, name="siamese")
-    
-    return siamese_model
+    def __init__(self, input_channels: int = 1, embedding_dim: int = 128):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(input_channels, 32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((1, 1)),
+        )
+        self.fc = nn.Linear(256, embedding_dim)
+        self.norm = nn.LayerNorm(embedding_dim)
 
-def train_siamese_model(X1, X2, labels, input_shape=(256, 256, 1), 
-                        embedding_dim=128, epochs=20, batch_size=32, 
-                        margin=1.0, save_dir="models"):
-    """
-    Train a Siamese network for contrastive learning
-    
-    Args:
-        X1: First elements of pairs
-        X2: Second elements of pairs
-        labels: 1 for similar pairs, 0 for dissimilar pairs
-        input_shape: Shape of input images
-        embedding_dim: Dimension of embeddings
-        epochs: Number of training epochs
-        batch_size: Batch size for training
-        margin: Margin for contrastive loss
-        save_dir: Directory to save model and training history
-        
-    Returns:
-        encoder: Trained encoder model
-        siamese_model: Trained Siamese model
-        history: Training history
-    """
-    # Create encoder and Siamese model
-    encoder = create_encoder(input_shape, embedding_dim)
-    siamese_model = create_siamese_model(encoder, input_shape)
-    
-    # Compile model
-    siamese_model.compile(
-        loss=lambda y_true, y_pred: contrastive_loss(y_true, y_pred, margin),
-        optimizer=optimizers.Adam(learning_rate=0.0001)
-    )
-    
-    # Train model
-    history = siamese_model.fit(
-        [X1, X2], labels,
-        epochs=epochs,
-        batch_size=batch_size,
-        validation_split=0.2,
-        verbose=1
-    )
-    
-    # Save model and history
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        x = self.norm(x)
+        return x
+
+
+def contrastive_loss(y_true: torch.Tensor, distances: torch.Tensor, margin: float = 1.0) -> torch.Tensor:
+    """Compute contrastive loss."""
+    y_true = y_true.float()
+    positive = y_true * distances.pow(2)
+    negative = (1 - y_true) * torch.clamp(margin - distances, min=0).pow(2)
+    return torch.mean(positive + negative)
+
+
+class SiameseNetwork(nn.Module):
+    def __init__(self, encoder: Encoder):
+        super().__init__()
+        self.encoder = encoder
+
+    def forward(self, x1: torch.Tensor, x2: torch.Tensor) -> torch.Tensor:
+        e1 = self.encoder(x1)
+        e2 = self.encoder(x2)
+        return torch.sqrt(((e1 - e2) ** 2).sum(dim=1))
+
+
+def _prepare_tensor(x: np.ndarray) -> torch.Tensor:
+    if x.ndim == 3:  # N,H,W
+        x = np.expand_dims(x, 1)
+    elif x.ndim == 4 and x.shape[-1] in {1, 3}:  # N,H,W,C -> N,C,H,W
+        x = np.transpose(x, (0, 3, 1, 2))
+    return torch.from_numpy(x).float()
+
+
+def train_siamese_model(X1: np.ndarray,
+                        X2: np.ndarray,
+                        labels: np.ndarray,
+                        embedding_dim: int = 128,
+                        epochs: int = 20,
+                        batch_size: int = 32,
+                        margin: float = 1.0,
+                        save_dir: str = "models"):
+    """Train Siamese network using PyTorch."""
+    X1_t = _prepare_tensor(X1)
+    X2_t = _prepare_tensor(X2)
+    y_t = torch.from_numpy(labels).float()
+
+    dataset = TensorDataset(X1_t, X2_t, y_t)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    input_channels = X1_t.shape[1]
+    encoder = Encoder(input_channels=input_channels, embedding_dim=embedding_dim)
+    model = SiameseNetwork(encoder)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    history = []
+    model.train()
+    for epoch in range(epochs):
+        epoch_loss = 0.0
+        for a, b, lbl in loader:
+            a, b, lbl = a.to(device), b.to(device), lbl.to(device)
+            optimizer.zero_grad()
+            dist = model(a, b)
+            loss = contrastive_loss(lbl, dist, margin)
+            loss.backward()
+            optimizer.step()
+            epoch_loss += loss.item() * a.size(0)
+        epoch_loss /= len(loader.dataset)
+        history.append(epoch_loss)
+        print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f}")
+
+    model.eval()
+    encoder.eval()
+
+    # Move models to CPU for saving and inference
+    model.cpu()
+    encoder.cpu()
+
     os.makedirs(save_dir, exist_ok=True)
-    encoder.save(os.path.join(save_dir, "encoder.h5"))
-    siamese_model.save(os.path.join(save_dir, "siamese.h5"))
-    
-    # Save training history plot
+    torch.save(encoder.state_dict(), os.path.join(save_dir, "encoder.pt"))
+    torch.save(model.state_dict(), os.path.join(save_dir, "siamese.pt"))
+
     plt.figure(figsize=(10, 5))
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('Model Loss')
-    plt.ylabel('Loss')
-    plt.xlabel('Epoch')
-    plt.legend(['Train', 'Validation'], loc='upper right')
+    plt.plot(history)
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training Loss")
     plt.savefig(os.path.join(save_dir, "training_history.png"))
     plt.close()
-    
-    return encoder, siamese_model, history
 
-def load_models(save_dir="models"):
-    """Load saved encoder and Siamese models"""
-    encoder = tf.keras.models.load_model(
-        os.path.join(save_dir, "encoder.h5"),
-        custom_objects={"contrastive_loss": contrastive_loss}
-    )
-    siamese_model = tf.keras.models.load_model(
-        os.path.join(save_dir, "siamese.h5"),
-        custom_objects={"contrastive_loss": contrastive_loss}
-    )
-    
-    return encoder, siamese_model
+    return encoder, model, history
+
+
+def load_models(save_dir: str = "models", device: Optional[torch.device] = None):
+    """Load saved PyTorch models."""
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    encoder = Encoder()
+    model = SiameseNetwork(encoder)
+    encoder_path = os.path.join(save_dir, "encoder.pt")
+    siamese_path = os.path.join(save_dir, "siamese.pt")
+    if os.path.exists(encoder_path):
+        encoder.load_state_dict(torch.load(encoder_path, map_location="cpu"))
+    if os.path.exists(siamese_path):
+        model.load_state_dict(torch.load(siamese_path, map_location="cpu"))
+
+    encoder.to(device)
+    model.to(device)
+    model.encoder = encoder
+    encoder.eval()
+    model.eval()
+    return encoder, model
+
 
 if __name__ == "__main__":
-    # Test model creation
-    input_shape = (256, 256, 1)  # Adjust based on your data
-    encoder = create_encoder(input_shape)
-    siamese_model = create_siamese_model(encoder, input_shape)
-    
-    # Print model summaries
-    print("Encoder Model:")
-    encoder.summary()
-    
-    print("\nSiamese Model:")
-    siamese_model.summary()
+    X1 = np.random.rand(10, 64, 64)
+    X2 = np.random.rand(10, 64, 64)
+    y = np.random.randint(0, 2, size=10)
+    train_siamese_model(X1, X2, y, epochs=1)
