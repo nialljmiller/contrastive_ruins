@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 # Import project modules
-from data_loader import load_shapefiles, load_site_locations, get_raster_paths, sample_random_patches
+from data_loader import load_shapefiles, load_site_locations, get_raster_paths, sample_random_patches, sample_site_patches
 from data_preparation import create_contrastive_pairs, load_contrastive_pairs
 from model import train_siamese_model, load_models
 from feature_extraction import extract_features, detect_anomalies
@@ -87,6 +87,17 @@ def main():
             n_samples=args.n_samples,
             save_dir=patch_dir
         )
+
+        # Extract patches around known archaeological sites for context
+        site_patches, _, _ = sample_site_patches(
+            raster_paths,
+            known_sites,
+            patch_size=args.patch_size,
+            save_dir=patch_dir
+        )
+
+        all_patches = np.concatenate([patches, site_patches]) if len(site_patches) > 0 else patches
+        all_sources = patch_sources + ["known_site"] * len(site_patches)
         
         # Create contrastive pairs for SELF-SUPERVISED learning
         print("Creating self-supervised contrastive pairs...")
@@ -117,6 +128,14 @@ def main():
             output_dir=results_dir,
             prefix="latent_space_features",
         )
+        if len(site_patches) > 0:
+            plot_latent_space(
+                encoder,
+                all_patches,
+                patch_sources=all_sources,
+                output_dir=results_dir,
+                prefix="latent_space_with_sites",
+            )
     else:
         # Load pre-trained models
         print("Loading pre-trained models...")
