@@ -69,6 +69,9 @@ def main():
     # Load known site locations
     print("Loading known site locations...")
     known_sites = load_site_locations(args.data_path)
+    if not hasattr(known_sites, "geometry"):
+        print("Site CSV lacks geometry; using shapefile sites instead")
+        known_sites = sites
     
     # Get raster paths
     print("Finding raster files...")

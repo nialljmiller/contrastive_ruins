@@ -115,6 +115,19 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
 
 def sample_site_patches(raster_paths, sites_gdf, patch_size=256, save_dir=None):
     """Extract patches centered on known site locations."""
+    # Ensure we have a GeoDataFrame with point geometry
+    if not isinstance(sites_gdf, gpd.GeoDataFrame):
+        if {"longitude", "latitude"}.issubset(sites_gdf.columns):
+            sites_gdf = gpd.GeoDataFrame(
+                sites_gdf,
+                geometry=gpd.points_from_xy(sites_gdf.longitude, sites_gdf.latitude),
+            )
+        else:
+            print(
+                "Known site locations lack geometry or lat/long columns; skipping site patch extraction."
+            )
+            return np.empty((0, patch_size, patch_size)), [], []
+
     patches = []
     patch_locations = []
     patch_sources = []
