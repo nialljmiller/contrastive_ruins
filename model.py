@@ -103,13 +103,6 @@ def train_siamese_model(X1: np.ndarray,
         history.append(epoch_loss)
         print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f}")
 
-    model.eval()
-    encoder.eval()
-
-    # Move models to CPU for saving and inference
-    model.cpu()
-    encoder.cpu()
-
     os.makedirs(save_dir, exist_ok=True)
     torch.save(encoder.state_dict(), os.path.join(save_dir, "encoder.pt"))
     torch.save(model.state_dict(), os.path.join(save_dir, "siamese.pt"))
@@ -123,6 +116,7 @@ def train_siamese_model(X1: np.ndarray,
     plt.close()
 
     return encoder, model, history
+
 
 
 def load_models(save_dir: str = "models", device: Optional[torch.device] = None):
@@ -144,6 +138,7 @@ def load_models(save_dir: str = "models", device: Optional[torch.device] = None)
     model.encoder = encoder
     encoder.eval()
     model.eval()
+    
     return encoder, model
 
 
