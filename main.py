@@ -10,7 +10,12 @@ from data_preparation import create_contrastive_pairs, load_contrastive_pairs
 from model import train_siamese_model, load_models
 from feature_extraction import extract_features, detect_anomalies
 from evaluation import evaluate_results, visualize_results, create_results_report
-from visualization import plot_latent_space, plot_training_loss, compute_embeddings
+from visualization import (
+    plot_latent_space,
+    plot_training_loss,
+    compute_embeddings,
+    plot_latent_overlay,
+)
 
 
 def setup_args():
@@ -185,20 +190,11 @@ def main():
             if len(site_patches_det) > 0
             else np.empty((0, features.shape[1]))
         )
-        all_features_det = (
-            np.concatenate([features, site_features_det])
-            if len(site_features_det) > 0
-            else features
-        )
-        all_labels_det = ["raster"] * len(features) + ["known_site"] * len(site_features_det)
-
-        plot_latent_space(
-            encoder,
-            all_features_det,
-            patch_sources=all_labels_det,
+        plot_latent_overlay(
+            features,
+            site_features_det,
             output_dir=results_dir,
             prefix="detection_latent_space",
-            precomputed=True,
         )
         
         # Detect anomalies
