@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 # Import project modules
-from data_loader import load_shapefiles, load_site_locations, get_raster_paths, sample_random_patches
+from data_loader import load_shapefiles, load_site_locations, get_raster_paths, sample_random_patches, sample_site_patches
 from data_preparation import create_contrastive_pairs, load_contrastive_pairs
 from model import train_siamese_model, load_models
 from feature_extraction import extract_features, detect_anomalies
 from evaluation import evaluate_results, visualize_results, create_results_report
-from visualization import plot_latent_space, plot_training_loss
+from visualization import plot_latent_space, plot_training_loss, compute_embeddings
 
 
 def setup_args():
@@ -69,6 +69,9 @@ def main():
     # Load known site locations
     print("Loading known site locations...")
     known_sites = load_site_locations(args.data_path)
+    if not hasattr(known_sites, "geometry"):
+        print("Site CSV lacks geometry; using shapefile sites instead")
+        known_sites = sites
     
     # Get raster paths
     print("Finding raster files...")
@@ -87,6 +90,17 @@ def main():
             n_samples=args.n_samples,
             save_dir=patch_dir
         )
+
+        # Extract patches around known archaeological sites for context
+        site_patches, _, _ = sample_site_patches(
+            raster_paths,
+            known_sites,
+            patch_size=args.patch_size,
+            save_dir=patch_dir
+        )
+
+        all_patches = np.concatenate([patches, site_patches]) if len(site_patches) > 0 else patches
+        all_sources = patch_sources + ["known_site"] * len(site_patches)
         
         # Create contrastive pairs for SELF-SUPERVISED learning
         print("Creating self-supervised contrastive pairs...")
@@ -117,6 +131,14 @@ def main():
             output_dir=results_dir,
             prefix="latent_space_features",
         )
+        if len(site_patches) > 0:
+            plot_latent_space(
+                encoder,
+                all_patches,
+                patch_sources=all_sources,
+                output_dir=results_dir,
+                prefix="latent_space_with_sites",
+            )
     else:
         # Load pre-trained models
         print("Loading pre-trained models...")
@@ -147,10 +169,37 @@ def main():
             stride=args.patch_size // 2,
             save_dir=results_dir
         )
-        
+
         if len(features) == 0:
             print("Error: No features extracted from test raster!")
             return
+
+        # Compute embeddings for known sites to plot alongside detection features
+        site_patches_det, _, _ = sample_site_patches(
+            [test_raster],
+            known_sites,
+            patch_size=args.patch_size,
+        )
+        site_features_det = (
+            compute_embeddings(encoder, site_patches_det)
+            if len(site_patches_det) > 0
+            else np.empty((0, features.shape[1]))
+        )
+        all_features_det = (
+            np.concatenate([features, site_features_det])
+            if len(site_features_det) > 0
+            else features
+        )
+        all_labels_det = ["raster"] * len(features) + ["known_site"] * len(site_features_det)
+
+        plot_latent_space(
+            encoder,
+            all_features_det,
+            patch_sources=all_labels_det,
+            output_dir=results_dir,
+            prefix="detection_latent_space",
+            precomputed=True,
+        )
         
         # Detect anomalies
         print(f"Detecting potential ruins using {args.detection_method}...")

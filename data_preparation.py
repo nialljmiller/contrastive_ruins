@@ -150,7 +150,7 @@ def create_contrastive_pairs(patches, patch_locations, sites_gdf=None, positive_
     
     Args:
         patches: Array of extracted patches
-        patch_locations: List of geometries (not used in self-supervised)
+        patch_locations: List of bounding boxes (not used in self-supervised)
         sites_gdf: Not used in self-supervised learning
         positive_ratio: Ratio of positive to total pairs
         save_dir: Directory to save pairs (optional)

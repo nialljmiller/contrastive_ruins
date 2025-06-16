@@ -3,7 +3,6 @@ import geopandas as gpd
 import pandas as pd
 import os
 import numpy as np
-from shapely.geometry import box
 from tqdm import tqdm
 import random
 
@@ -62,7 +61,7 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
         
     Returns:
         patches: Array of extracted patches
-        patch_locations: List of geometries representing patch locations
+        patch_locations: List of bounding boxes as (x_min, y_min, x_max, y_max)
     """
     patches = []
     patch_locations = []
@@ -97,7 +96,7 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
                     x_max, y_min = src.transform * (col + patch_size, row + patch_size)
                     
                     patches.append(patch)
-                    patch_locations.append(box(x_min, y_min, x_max, y_max))
+                    patch_locations.append((x_min, y_min, x_max, y_max))
                     patch_sources.append(os.path.basename(raster_path))
                     
                     # Save patch if directory is provided
@@ -111,6 +110,72 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
             continue
     
     print(f"Successfully extracted {len(patches)} patches")
+    return np.array(patches), patch_locations, patch_sources
+
+def sample_site_patches(raster_paths, sites_gdf, patch_size=256, save_dir=None):
+    """Extract patches centered on known site locations.
+
+    Returns:
+        patches: Array of extracted patches
+        patch_locations: List of bounding boxes as (x_min, y_min, x_max, y_max)
+        patch_sources: Which raster each patch came from
+    """
+
+    if {"longitude", "latitude"}.issubset(sites_gdf.columns):
+        coords = list(zip(sites_gdf.longitude, sites_gdf.latitude))
+    elif "geometry" in sites_gdf.columns:
+        coords = [(geom.x, geom.y) for geom in sites_gdf.geometry]
+    else:
+        print(
+            "Known site locations lack geometry or lat/long columns; skipping site patch extraction."
+        )
+        return np.empty((0, patch_size, patch_size)), [], []
+
+    patches = []
+    patch_locations = []
+    patch_sources = []
+
+    for idx, (lon, lat) in enumerate(coords):
+        for raster_path in raster_paths:
+            try:
+                with rasterio.open(raster_path) as src:
+                    left, bottom, right, top = src.bounds
+                    if not (left <= lon <= right and bottom <= lat <= top):
+                        continue
+
+                    row, col = src.index(lon, lat)
+                    row_start = max(0, row - patch_size // 2)
+                    col_start = max(0, col - patch_size // 2)
+                    row_start = min(row_start, src.height - patch_size)
+                    col_start = min(col_start, src.width - patch_size)
+
+                    window = ((row_start, row_start + patch_size), (col_start, col_start + patch_size))
+                    patch = src.read(window=window)
+
+                    if np.any(patch == src.nodata) or np.all(patch == 0):
+                        continue
+
+                    if patch.shape[0] == 1:
+                        patch = patch[0]
+
+                    x_min, y_max = src.transform * (col_start, row_start)
+                    x_max, y_min = src.transform * (col_start + patch_size, row_start + patch_size)
+
+                    patches.append(patch)
+                    patch_locations.append((x_min, y_min, x_max, y_max))
+                    patch_sources.append(os.path.basename(raster_path))
+
+                    if save_dir is not None:
+                        os.makedirs(save_dir, exist_ok=True)
+                        patch_filename = f"site_patch_{idx}.npy"
+                        np.save(os.path.join(save_dir, patch_filename), patch)
+
+                    break
+            except Exception as e:
+                print(f"Error extracting site patch from {raster_path}: {e}")
+                continue
+
+    print(f"Extracted {len(patches)} site patches")
     return np.array(patches), patch_locations, patch_sources
 
 if __name__ == "__main__":

@@ -28,23 +28,32 @@ def _prepare_batch(patches):
     return torch.from_numpy(batch)
 
 
-def plot_latent_space(encoder, patches, patch_sources=None, output_dir="results", prefix="latent_space"):
-    """Plot 2D and 3D PCA projections of encoder embeddings."""
+def compute_embeddings(encoder, patches, batch_size=64):
+    """Return encoder embeddings for an array of patches."""
     device = torch.device("cpu")
     if isinstance(encoder, torch.nn.Module):
         device = next(encoder.parameters()).device
         encoder.eval()
 
-    # Compute embeddings in batches to avoid memory issues
-    features = []
-    batch_size = 64
+    feats = []
     for start in range(0, len(patches), batch_size):
         batch = _prepare_batch(patches[start:start + batch_size])
         batch = batch.to(device)
         with torch.no_grad():
             emb = encoder(batch).cpu().numpy()
-        features.append(emb)
-    features = np.concatenate(features, axis=0)
+        feats.append(emb)
+    if feats:
+        return np.concatenate(feats, axis=0)
+    return np.empty((0, 1))
+
+
+def plot_latent_space(encoder, patches, patch_sources=None, output_dir="results", prefix="latent_space", precomputed=False):
+    """Plot 2D and 3D PCA projections of encoder embeddings."""
+
+    if precomputed:
+        features = patches
+    else:
+        features = compute_embeddings(encoder, patches)
 
     # 2D PCA
     pca2 = PCA(n_components=2)
