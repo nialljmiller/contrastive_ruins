@@ -144,6 +144,7 @@ def sample_site_patches(raster_paths, sites_gdf, patch_size=256, save_dir=None):
                         continue
 
                     row, col = src.index(lon, lat)
+
                     row_start = max(0, row - patch_size // 2)
                     col_start = max(0, col - patch_size // 2)
                     row_start = min(row_start, src.height - patch_size)
@@ -163,6 +164,7 @@ def sample_site_patches(raster_paths, sites_gdf, patch_size=256, save_dir=None):
 
                     patches.append(patch)
                     patch_locations.append((x_min, y_min, x_max, y_max))
+
                     patch_sources.append(os.path.basename(raster_path))
 
                     if save_dir is not None:
