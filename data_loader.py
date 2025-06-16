@@ -3,7 +3,6 @@ import geopandas as gpd
 import pandas as pd
 import os
 import numpy as np
-from shapely.geometry import box
 from tqdm import tqdm
 import random
 
@@ -62,7 +61,7 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
         
     Returns:
         patches: Array of extracted patches
-        patch_locations: List of geometries representing patch locations
+        patch_locations: List of bounding boxes as (x_min, y_min, x_max, y_max)
     """
     patches = []
     patch_locations = []
@@ -97,7 +96,7 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
                     x_max, y_min = src.transform * (col + patch_size, row + patch_size)
                     
                     patches.append(patch)
-                    patch_locations.append(box(x_min, y_min, x_max, y_max))
+                    patch_locations.append((x_min, y_min, x_max, y_max))
                     patch_sources.append(os.path.basename(raster_path))
                     
                     # Save patch if directory is provided
@@ -114,22 +113,38 @@ def sample_random_patches(raster_paths, patch_size=256, n_samples=10000, save_di
     return np.array(patches), patch_locations, patch_sources
 
 def sample_site_patches(raster_paths, sites_gdf, patch_size=256, save_dir=None):
-    """Extract patches centered on known site locations."""
+    """Extract patches centered on known site locations.
+
+    Returns:
+        patches: Array of extracted patches
+        patch_locations: List of bounding boxes as (x_min, y_min, x_max, y_max)
+        patch_sources: Which raster each patch came from
+    """
+
+    if {"longitude", "latitude"}.issubset(sites_gdf.columns):
+        coords = list(zip(sites_gdf.longitude, sites_gdf.latitude))
+    elif "geometry" in sites_gdf.columns:
+        coords = [(geom.x, geom.y) for geom in sites_gdf.geometry]
+    else:
+        print(
+            "Known site locations lack geometry or lat/long columns; skipping site patch extraction."
+        )
+        return np.empty((0, patch_size, patch_size)), [], []
+
     patches = []
     patch_locations = []
     patch_sources = []
 
-    for idx, site in sites_gdf.iterrows():
-        point = site.geometry
-
+    for idx, (lon, lat) in enumerate(coords):
         for raster_path in raster_paths:
             try:
                 with rasterio.open(raster_path) as src:
-                    bounds = box(*src.bounds)
-                    if not point.within(bounds):
+                    left, bottom, right, top = src.bounds
+                    if not (left <= lon <= right and bottom <= lat <= top):
                         continue
 
-                    row, col = src.index(point.x, point.y)
+                    row, col = src.index(lon, lat)
+
                     row_start = max(0, row - patch_size // 2)
                     col_start = max(0, col - patch_size // 2)
                     row_start = min(row_start, src.height - patch_size)
@@ -148,7 +163,8 @@ def sample_site_patches(raster_paths, sites_gdf, patch_size=256, save_dir=None):
                     x_max, y_min = src.transform * (col_start + patch_size, row_start + patch_size)
 
                     patches.append(patch)
-                    patch_locations.append(box(x_min, y_min, x_max, y_max))
+                    patch_locations.append((x_min, y_min, x_max, y_max))
+
                     patch_sources.append(os.path.basename(raster_path))
 
                     if save_dir is not None:
