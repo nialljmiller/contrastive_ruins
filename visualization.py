@@ -106,6 +106,7 @@ def plot_latent_overlay(
     ``overlay_features`` so the random patches determine the orientation of
     the space. t-SNE does not support transforming new samples, so both sets
     of features are concatenated before fitting.
+
     """
 
     os.makedirs(output_dir, exist_ok=True)
