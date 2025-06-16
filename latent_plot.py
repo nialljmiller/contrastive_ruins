@@ -10,7 +10,9 @@ from data_loader import (
     sample_site_patches,
 )
 from model import load_models
-from visualization import compute_embeddings, plot_latent_space
+
+from visualization import compute_embeddings, plot_latent_overlay
+
 
 
 def parse_args():
@@ -59,19 +61,19 @@ def main():
 
     # Compute embeddings
     patch_emb = compute_embeddings(encoder, patches)
-    site_emb = compute_embeddings(encoder, site_patches) if len(site_patches) > 0 else np.empty((0, patch_emb.shape[1]))
 
-    all_emb = np.concatenate([patch_emb, site_emb]) if len(site_emb) > 0 else patch_emb
-    labels = ["raster"] * len(patch_emb) + ["known_site"] * len(site_emb)
+    site_emb = (
+        compute_embeddings(encoder, site_patches)
+        if len(site_patches) > 0
+        else np.empty((0, patch_emb.shape[1]))
+    )
 
-    # Plot latent space
-    plot_latent_space(
-        encoder,
-        all_emb,
-        patch_sources=labels if labels else None,
+    # Plot latent space overlay
+    plot_latent_overlay(
+        patch_emb,
+        site_emb,
         output_dir=args.output_dir,
         prefix="latent_with_sites",
-        precomputed=True,
     )
 
 

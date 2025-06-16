@@ -89,3 +89,45 @@ def plot_latent_space(encoder, patches, patch_sources=None, output_dir="results"
     plt.close()
 
     return features
+
+
+def plot_latent_overlay(base_features, overlay_features, output_dir="results", prefix="latent_overlay", labels=("random", "site")):
+    """Plot PCA projections with overlays.
+
+    PCA is fit on ``base_features`` and applied to ``overlay_features`` so that
+    the orientation of the latent space is determined solely by the random
+    samples. Overlay points are then plotted on top using a different marker.
+    """
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 2D PCA
+    pca2 = PCA(n_components=2)
+    base_2d = pca2.fit_transform(base_features)
+    overlay_2d = pca2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(base_2d[:, 0], base_2d[:, 1], s=5, alpha=0.6, color="gray", label=labels[0])
+    if len(overlay_2d) > 0:
+        plt.scatter(overlay_2d[:, 0], overlay_2d[:, 1], s=20, color="red", marker="x", label=labels[1])
+    plt.legend(fontsize="small")
+    plt.title("Latent Space (2D PCA)")
+    plt.savefig(os.path.join(output_dir, f"{prefix}_2d.png"))
+    plt.close()
+
+    # 3D PCA
+    pca3 = PCA(n_components=3)
+    base_3d = pca3.fit_transform(base_features)
+    overlay_3d = pca3.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 3))
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(base_3d[:, 0], base_3d[:, 1], base_3d[:, 2], s=5, alpha=0.6, color="gray", label=labels[0])
+    if len(overlay_3d) > 0:
+        ax.scatter(overlay_3d[:, 0], overlay_3d[:, 1], overlay_3d[:, 2], s=20, color="red", marker="x", label=labels[1])
+    ax.legend(fontsize="small")
+    ax.set_title("Latent Space (3D PCA)")
+    plt.savefig(os.path.join(output_dir, f"{prefix}_3d.png"))
+    plt.close()
+
+    return base_2d, overlay_2d
