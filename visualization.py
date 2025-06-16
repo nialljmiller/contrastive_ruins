@@ -119,12 +119,7 @@ def plot_latent_overlay(
     cmap = plt.get_cmap("tab10", len(unique_sources))
     color_map = {src: cmap(i) for i, src in enumerate(unique_sources)}
 
-    # ----- PCA -----
-    pca2 = PCA(n_components=2)
-    base_pca2 = pca2.fit_transform(base_features)
-    overlay_pca2 = pca2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
 
-    plt.figure(figsize=(8, 6))
     for src in unique_sources:
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
@@ -135,6 +130,7 @@ def plot_latent_overlay(
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys(), fontsize="small")
+
     plt.title("Latent Space (2D PCA)")
     plt.savefig(os.path.join(output_dir, f"{prefix}_pca_2d.png"))
     plt.close()
@@ -145,6 +141,7 @@ def plot_latent_overlay(
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
+
     for src in unique_sources:
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
@@ -183,6 +180,7 @@ def plot_latent_overlay(
     overlay_tsne2 = combined_2d[len(base_features) :]
 
     plt.figure(figsize=(8, 6))
+
     for src in unique_sources:
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
@@ -193,6 +191,7 @@ def plot_latent_overlay(
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys(), fontsize="small")
+
     plt.title("Latent Space (2D t-SNE)")
     plt.savefig(os.path.join(output_dir, f"{prefix}_tsne_2d.png"))
     plt.close()
@@ -204,6 +203,7 @@ def plot_latent_overlay(
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
+
     for src in unique_sources:
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
@@ -230,6 +230,7 @@ def plot_latent_overlay(
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     ax.legend(by_label.values(), by_label.keys(), fontsize="small")
+
     ax.set_title("Latent Space (3D t-SNE)")
     plt.savefig(os.path.join(output_dir, f"{prefix}_tsne_3d.png"))
     plt.close()
@@ -240,6 +241,7 @@ def plot_latent_overlay(
     overlay_umap2 = umap2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
 
     plt.figure(figsize=(8, 6))
+
     for src in unique_sources:
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
@@ -250,6 +252,7 @@ def plot_latent_overlay(
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys(), fontsize="small")
+
     plt.title("Latent Space (2D UMAP)")
     plt.savefig(os.path.join(output_dir, f"{prefix}_umap_2d.png"))
     plt.close()
@@ -260,6 +263,7 @@ def plot_latent_overlay(
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
+
     for src in unique_sources:
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
@@ -286,6 +290,7 @@ def plot_latent_overlay(
     handles, labels = ax.get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     ax.legend(by_label.values(), by_label.keys(), fontsize="small")
+
     ax.set_title("Latent Space (3D UMAP)")
     plt.savefig(os.path.join(output_dir, f"{prefix}_umap_3d.png"))
     plt.close()
