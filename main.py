@@ -2,7 +2,6 @@ import os
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
 from pathlib import Path
 
 # Import project modules
@@ -97,17 +96,10 @@ def main():
             save_dir=patch_dir
         )
 
-        # Determine input shape
-        if len(X1.shape) == 4:
-            input_shape = X1.shape[1:]
-        else:
-            input_shape = (args.patch_size, args.patch_size, 1)
-        
         # Train model
         print(f"Training Siamese network with contrastive loss...")
         encoder, siamese_model, history = train_siamese_model(
             X1, X2, labels,
-            input_shape=input_shape,
             epochs=args.epochs,
             save_dir=model_dir
         )
