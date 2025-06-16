@@ -8,3 +8,4 @@ scikit-learn==1.2.2
 pandas==1.5.3
 shapely==2.0.1
 tqdm==4.65.0
+umap-learn==0.5.7
