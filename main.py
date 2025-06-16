@@ -22,7 +22,7 @@ def setup_args():
                         help='Directory to save results')
     parser.add_argument('--mode', type=str, choices=['train', 'detect', 'full'], default='full',
                         help='Mode: train model, detect ruins, or run full pipeline')
-    parser.add_argument('--raster_limit', type=int, default=3,
+    parser.add_argument('--raster_limit', type=int, default=5,
                         help='Maximum number of raster files to process')
     parser.add_argument('--patch_size', type=int, default=256,
                         help='Size of image patches')
