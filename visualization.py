@@ -3,6 +3,8 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+import umap
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 
@@ -91,43 +93,109 @@ def plot_latent_space(encoder, patches, patch_sources=None, output_dir="results"
     return features
 
 
-def plot_latent_overlay(base_features, overlay_features, output_dir="results", prefix="latent_overlay", labels=("random", "site")):
-    """Plot PCA projections with overlays.
+def plot_latent_overlay(
+    base_features,
+    overlay_features,
+    output_dir="results",
+    prefix="latent_overlay",
+    labels=("random", "site"),
+):
+    """Plot PCA, t-SNE and UMAP projections with overlays.
 
-    PCA is fit on ``base_features`` and applied to ``overlay_features`` so that
-    the orientation of the latent space is determined solely by the random
-    samples. Overlay points are then plotted on top using a different marker.
+    PCA and UMAP are fit on ``base_features`` and then used to transform
+    ``overlay_features`` so the random patches determine the orientation of
+    the space. t-SNE does not support transforming new samples, so both sets
+    of features are concatenated before fitting.
+
     """
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # 2D PCA
+    # ----- PCA -----
     pca2 = PCA(n_components=2)
-    base_2d = pca2.fit_transform(base_features)
-    overlay_2d = pca2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
+    base_pca2 = pca2.fit_transform(base_features)
+    overlay_pca2 = pca2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
 
     plt.figure(figsize=(8, 6))
-    plt.scatter(base_2d[:, 0], base_2d[:, 1], s=5, alpha=0.6, color="gray", label=labels[0])
-    if len(overlay_2d) > 0:
-        plt.scatter(overlay_2d[:, 0], overlay_2d[:, 1], s=20, color="red", marker="x", label=labels[1])
+    plt.scatter(base_pca2[:, 0], base_pca2[:, 1], s=5, alpha=0.6, color="gray", label=labels[0])
+    if len(overlay_pca2) > 0:
+        plt.scatter(overlay_pca2[:, 0], overlay_pca2[:, 1], s=20, color="red", marker="x", label=labels[1])
     plt.legend(fontsize="small")
     plt.title("Latent Space (2D PCA)")
-    plt.savefig(os.path.join(output_dir, f"{prefix}_2d.png"))
+    plt.savefig(os.path.join(output_dir, f"{prefix}_pca_2d.png"))
     plt.close()
 
-    # 3D PCA
     pca3 = PCA(n_components=3)
-    base_3d = pca3.fit_transform(base_features)
-    overlay_3d = pca3.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 3))
+    base_pca3 = pca3.fit_transform(base_features)
+    overlay_pca3 = pca3.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 3))
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
-    ax.scatter(base_3d[:, 0], base_3d[:, 1], base_3d[:, 2], s=5, alpha=0.6, color="gray", label=labels[0])
-    if len(overlay_3d) > 0:
-        ax.scatter(overlay_3d[:, 0], overlay_3d[:, 1], overlay_3d[:, 2], s=20, color="red", marker="x", label=labels[1])
+    ax.scatter(base_pca3[:, 0], base_pca3[:, 1], base_pca3[:, 2], s=5, alpha=0.6, color="gray", label=labels[0])
+    if len(overlay_pca3) > 0:
+        ax.scatter(overlay_pca3[:, 0], overlay_pca3[:, 1], overlay_pca3[:, 2], s=20, color="red", marker="x", label=labels[1])
     ax.legend(fontsize="small")
     ax.set_title("Latent Space (3D PCA)")
-    plt.savefig(os.path.join(output_dir, f"{prefix}_3d.png"))
+    plt.savefig(os.path.join(output_dir, f"{prefix}_pca_3d.png"))
     plt.close()
 
-    return base_2d, overlay_2d
+    # ----- t-SNE -----
+    combined = base_features if len(overlay_features) == 0 else np.vstack([base_features, overlay_features])
+    tsne2 = TSNE(n_components=2, init="pca", random_state=42)
+    combined_2d = tsne2.fit_transform(combined)
+    base_tsne2 = combined_2d[: len(base_features)]
+    overlay_tsne2 = combined_2d[len(base_features) :]
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(base_tsne2[:, 0], base_tsne2[:, 1], s=5, alpha=0.6, color="gray", label=labels[0])
+    if len(overlay_tsne2) > 0:
+        plt.scatter(overlay_tsne2[:, 0], overlay_tsne2[:, 1], s=20, color="red", marker="x", label=labels[1])
+    plt.legend(fontsize="small")
+    plt.title("Latent Space (2D t-SNE)")
+    plt.savefig(os.path.join(output_dir, f"{prefix}_tsne_2d.png"))
+    plt.close()
+
+    tsne3 = TSNE(n_components=3, init="pca", random_state=42)
+    combined_3d = tsne3.fit_transform(combined)
+    base_tsne3 = combined_3d[: len(base_features)]
+    overlay_tsne3 = combined_3d[len(base_features) :]
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(base_tsne3[:, 0], base_tsne3[:, 1], base_tsne3[:, 2], s=5, alpha=0.6, color="gray", label=labels[0])
+    if len(overlay_tsne3) > 0:
+        ax.scatter(overlay_tsne3[:, 0], overlay_tsne3[:, 1], overlay_tsne3[:, 2], s=20, color="red", marker="x", label=labels[1])
+    ax.legend(fontsize="small")
+    ax.set_title("Latent Space (3D t-SNE)")
+    plt.savefig(os.path.join(output_dir, f"{prefix}_tsne_3d.png"))
+    plt.close()
+
+    # ----- UMAP -----
+    umap2 = umap.UMAP(n_components=2, random_state=42)
+    base_umap2 = umap2.fit_transform(base_features)
+    overlay_umap2 = umap2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
+
+    plt.figure(figsize=(8, 6))
+    plt.scatter(base_umap2[:, 0], base_umap2[:, 1], s=5, alpha=0.6, color="gray", label=labels[0])
+    if len(overlay_umap2) > 0:
+        plt.scatter(overlay_umap2[:, 0], overlay_umap2[:, 1], s=20, color="red", marker="x", label=labels[1])
+    plt.legend(fontsize="small")
+    plt.title("Latent Space (2D UMAP)")
+    plt.savefig(os.path.join(output_dir, f"{prefix}_umap_2d.png"))
+    plt.close()
+
+    umap3 = umap.UMAP(n_components=3, random_state=42)
+    base_umap3 = umap3.fit_transform(base_features)
+    overlay_umap3 = umap3.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 3))
+
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(base_umap3[:, 0], base_umap3[:, 1], base_umap3[:, 2], s=5, alpha=0.6, color="gray", label=labels[0])
+    if len(overlay_umap3) > 0:
+        ax.scatter(overlay_umap3[:, 0], overlay_umap3[:, 1], overlay_umap3[:, 2], s=20, color="red", marker="x", label=labels[1])
+    ax.legend(fontsize="small")
+    ax.set_title("Latent Space (3D UMAP)")
+    plt.savefig(os.path.join(output_dir, f"{prefix}_umap_3d.png"))
+    plt.close()
+
+    return base_pca2, overlay_pca2

@@ -10,10 +10,7 @@ from data_loader import (
     sample_site_patches,
 )
 from model import load_models
-
 from visualization import compute_embeddings, plot_latent_overlay
-
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Plot encoder latent space with known sites")
@@ -61,7 +58,7 @@ def main():
 
     # Compute embeddings
     patch_emb = compute_embeddings(encoder, patches)
-
+    
     site_emb = (
         compute_embeddings(encoder, site_patches)
         if len(site_patches) > 0
