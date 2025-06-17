@@ -100,6 +100,8 @@ def plot_latent_overlay(
     overlay_sources=None,
     output_dir="results",
     prefix="latent_overlay",
+    max_tsne_points=10000,
+    random_state=42,
 ):
     """Plot PCA, t-SNE and UMAP projections with overlays.
 
@@ -179,15 +181,28 @@ def plot_latent_overlay(
 
     # ----- t-SNE -----
     combined = base_features if len(overlay_features) == 0 else np.vstack([base_features, overlay_features])
-    tsne2 = TSNE(n_components=2, init="pca", random_state=42)
+
+    if combined.shape[0] > max_tsne_points:
+        rng = np.random.default_rng(random_state)
+        idx = rng.choice(combined.shape[0], max_tsne_points, replace=False)
+        combined = combined[idx]
+        base_mask = [i < len(base_features) for i in idx]
+        base_sources_tsne = [base_sources[i] for i in idx if i < len(base_features)]
+        overlay_sources_tsne = [overlay_sources[i - len(base_features)] for i in idx if i >= len(base_features)]
+    else:
+        base_mask = [i < len(base_features) for i in range(combined.shape[0])]
+        base_sources_tsne = base_sources
+        overlay_sources_tsne = overlay_sources
+
+    tsne2 = TSNE(n_components=2, init="pca", random_state=random_state)
     combined_2d = tsne2.fit_transform(combined)
-    base_tsne2 = combined_2d[: len(base_features)]
-    overlay_tsne2 = combined_2d[len(base_features) :]
+    base_tsne2 = combined_2d[np.array(base_mask)]
+    overlay_tsne2 = combined_2d[~np.array(base_mask)]
 
     plt.figure(figsize=(8, 6))
     for src in unique_sources:
-        base_idx = [i for i, s in enumerate(base_sources) if s == src]
-        over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
+        base_idx = [i for i, s in enumerate(base_sources_tsne) if s == src]
+        over_idx = [i for i, s in enumerate(overlay_sources_tsne) if s == src]
         if base_idx:
             plt.scatter(base_tsne2[base_idx, 0], base_tsne2[base_idx, 1], s=5, alpha=0.6, color=color_map[src], label=src)
         if over_idx:
@@ -199,16 +214,16 @@ def plot_latent_overlay(
     plt.savefig(os.path.join(output_dir, f"{prefix}_tsne_2d.png"))
     plt.close()
 
-    tsne3 = TSNE(n_components=3, init="pca", random_state=42)
+    tsne3 = TSNE(n_components=3, init="pca", random_state=random_state)
     combined_3d = tsne3.fit_transform(combined)
-    base_tsne3 = combined_3d[: len(base_features)]
-    overlay_tsne3 = combined_3d[len(base_features) :]
+    base_tsne3 = combined_3d[np.array(base_mask)]
+    overlay_tsne3 = combined_3d[~np.array(base_mask)]
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
     for src in unique_sources:
-        base_idx = [i for i, s in enumerate(base_sources) if s == src]
-        over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
+        base_idx = [i for i, s in enumerate(base_sources_tsne) if s == src]
+        over_idx = [i for i, s in enumerate(overlay_sources_tsne) if s == src]
         if base_idx:
             ax.scatter(
                 base_tsne3[base_idx, 0],
