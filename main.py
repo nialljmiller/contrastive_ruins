@@ -216,6 +216,7 @@ def main():
             if len(site_patches_det) > 0
             else np.empty((0, features.shape[1]))
         )
+
         # Visualize the feature distribution with the known site embeddings
         # overlaid. ``base_features`` and ``base_sources`` come from all
         # rasters so they have matching lengths.
