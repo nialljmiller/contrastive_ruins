@@ -164,43 +164,41 @@ def main():
             test_raster = raster_paths[-1]
         
         print(f"Using {os.path.basename(test_raster)} for detection...")
-        
 
+        # Extract features from all rasters once and retain those for the test
+        # raster so we don't compute them twice.
+        base_features = []
+        base_sources = []
+        features = None
+        locations = None
 
-        # In detection mode - extract features from ALL rasters, not just one
-        all_features = []
-        all_locations = []
-        all_sources = []
-
-        for raster_path in raster_paths:  # Use all rasters, not just test_raster
+        for raster_path in raster_paths:
             print(f"Extracting features from {os.path.basename(raster_path)}...")
-            features, locations, _ = extract_features(
+            feats, locs, _ = extract_features(
                 encoder,
                 raster_path,
                 patch_size=args.patch_size,
                 stride=args.patch_size // 2,
-                save_dir=results_dir
+                save_dir=results_dir,
             )
-            all_features.extend(features)
-            all_locations.extend(locations)
-            all_sources.extend([os.path.basename(raster_path)] * len(features))
+            base_features.extend(feats)
+            base_sources.extend([os.path.basename(raster_path)] * len(feats))
 
-        # Convert to numpy array
-        all_features = np.array(all_features)
+            if os.path.samefile(raster_path, test_raster):
+                features = np.array(feats)
+                locations = locs
 
+        base_features = np.array(base_features)
 
-
-        # Extract features
-        print("Extracting features from test raster...")
-        features, locations, _ = extract_features(
-            encoder,
-            test_raster,
-            patch_size=args.patch_size,
-            stride=args.patch_size // 2,
-            save_dir=results_dir
-        )
-
-
+        if features is None:
+            # If the loop didn't match the test raster path, extract now
+            features, locations, _ = extract_features(
+                encoder,
+                test_raster,
+                patch_size=args.patch_size,
+                stride=args.patch_size // 2,
+                save_dir=results_dir,
+            )
 
         if len(features) == 0:
             print("Error: No features extracted from test raster!")
@@ -213,28 +211,22 @@ def main():
             patch_size=args.patch_size,
         )
 
-
-
         site_features_det = (
             compute_embeddings(encoder, site_patches_det)
             if len(site_patches_det) > 0
             else np.empty((0, features.shape[1]))
         )
-
-
-
+        # Visualize the feature distribution with the known site embeddings
+        # overlaid. ``base_features`` and ``base_sources`` come from all
+        # rasters so they have matching lengths.
         plot_latent_overlay(
-            features,
+            base_features,
             site_features_det,
-            base_sources=all_sources,
+            base_sources=base_sources,
             overlay_sources=["known_site"] * len(site_features_det),
             output_dir=results_dir,
             prefix="detection_latent_space",
         )
-        
-
-
-
         # Detect anomalies
         print(f"Detecting potential ruins using {args.detection_method}...")
         ruins_gdf, _ = detect_anomalies(
