@@ -49,48 +49,6 @@ def compute_embeddings(encoder, patches, batch_size=64):
     return np.empty((0, 1))
 
 
-def plot_latent_space(encoder, patches, patch_sources=None, output_dir="results", prefix="latent_space", precomputed=False):
-    """Plot 2D and 3D PCA projections of encoder embeddings."""
-
-    if precomputed:
-        features = patches
-    else:
-        features = compute_embeddings(encoder, patches)
-
-    # 2D PCA
-    pca2 = PCA(n_components=2)
-    reduced2 = pca2.fit_transform(features)
-    plt.figure(figsize=(8, 6))
-    if patch_sources is not None:
-        unique_sources = sorted(set(patch_sources))
-        for src in unique_sources:
-            idx = [i for i, s in enumerate(patch_sources) if s == src]
-            plt.scatter(reduced2[idx, 0], reduced2[idx, 1], s=5, alpha=0.6, label=src)
-        plt.legend(fontsize="small")
-    else:
-        plt.scatter(reduced2[:, 0], reduced2[:, 1], s=5, alpha=0.6)
-    plt.title("Latent Space (2D PCA)")
-    os.makedirs(output_dir, exist_ok=True)
-    plt.savefig(os.path.join(output_dir, f"{prefix}_2d.png"))
-    plt.close()
-
-    # 3D PCA
-    pca3 = PCA(n_components=3)
-    reduced3 = pca3.fit_transform(features)
-    fig = plt.figure(figsize=(8, 6))
-    ax = fig.add_subplot(111, projection="3d")
-    if patch_sources is not None:
-        for src in unique_sources:
-            idx = [i for i, s in enumerate(patch_sources) if s == src]
-            ax.scatter(reduced3[idx, 0], reduced3[idx, 1], reduced3[idx, 2], s=5, alpha=0.6, label=src)
-        ax.legend(fontsize="small")
-    else:
-        ax.scatter(reduced3[:, 0], reduced3[:, 1], reduced3[:, 2], s=5, alpha=0.6)
-    ax.set_title("Latent Space (3D PCA)")
-    plt.savefig(os.path.join(output_dir, f"{prefix}_3d.png"))
-    plt.close()
-
-    return features
 
 
 def plot_latent_overlay(
@@ -110,6 +68,9 @@ def plot_latent_overlay(
     fit only on ``base_features`` so the random patches determine the orienta-
     tion. t-SNE does not support transforming new samples, so both feature sets
     are concatenated before fitting.
+    
+    Sources are plotted in order of dataset size (largest to smallest) so that
+    larger datasets appear on the bottom layer.
     """
 
     os.makedirs(output_dir, exist_ok=True)
@@ -119,7 +80,17 @@ def plot_latent_overlay(
         overlay_features = np.empty((0, base_features.shape[1]))
     overlay_sources = overlay_sources or ["overlay"] * len(overlay_features)
     all_sources = base_sources + overlay_sources
-    unique_sources = sorted(set(all_sources))
+    
+    # Count points for each source to sort by size
+    source_counts = {}
+    for src in set(all_sources):
+        base_count = sum(1 for s in base_sources if s == src)
+        overlay_count = sum(1 for s in overlay_sources if s == src)
+        source_counts[src] = base_count + overlay_count
+    
+    # Sort sources by total count (largest to smallest)
+    unique_sources = sorted(source_counts.keys(), key=lambda x: source_counts[x], reverse=True)
+    
     cmap = plt.get_cmap("tab10", len(unique_sources))
     color_map = {src: cmap(i) for i, src in enumerate(unique_sources)}
 
@@ -129,7 +100,7 @@ def plot_latent_overlay(
     overlay_pca2 = pca2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
 
     plt.figure(figsize=(8, 6))
-    for src in unique_sources:
+    for src in unique_sources:  # Now sorted by size
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
         if base_idx:
@@ -149,7 +120,7 @@ def plot_latent_overlay(
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
-    for src in unique_sources:
+    for src in unique_sources:  # Now sorted by size
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
         if base_idx:
@@ -200,7 +171,7 @@ def plot_latent_overlay(
     overlay_tsne2 = combined_2d[~np.array(base_mask)]
 
     plt.figure(figsize=(8, 6))
-    for src in unique_sources:
+    for src in unique_sources:  # Now sorted by size
         base_idx = [i for i, s in enumerate(base_sources_tsne) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources_tsne) if s == src]
         if base_idx:
@@ -221,7 +192,7 @@ def plot_latent_overlay(
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
-    for src in unique_sources:
+    for src in unique_sources:  # Now sorted by size
         base_idx = [i for i, s in enumerate(base_sources_tsne) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources_tsne) if s == src]
         if base_idx:
@@ -257,7 +228,7 @@ def plot_latent_overlay(
     overlay_umap2 = umap2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
 
     plt.figure(figsize=(8, 6))
-    for src in unique_sources:
+    for src in unique_sources:  # Now sorted by size
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
         if base_idx:
@@ -277,7 +248,7 @@ def plot_latent_overlay(
 
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection="3d")
-    for src in unique_sources:
+    for src in unique_sources:  # Now sorted by size
         base_idx = [i for i, s in enumerate(base_sources) if s == src]
         over_idx = [i for i, s in enumerate(overlay_sources) if s == src]
         if base_idx:
