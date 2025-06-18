@@ -223,8 +223,11 @@ def main():
 
 
 
+        # Visualize the feature distribution with the known site embeddings
+        # overlaid. Use the features from all rasters as the base data so that
+        # ``base_sources`` matches the length of ``base_features``.
         plot_latent_overlay(
-            features,
+            all_features,
             site_features_det,
             base_sources=all_sources,
             overlay_sources=["known_site"] * len(site_features_det),
