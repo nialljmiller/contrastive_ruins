@@ -75,7 +75,7 @@ def plot_latent_overlay(
     overlay_sources=None,
     output_dir="results",
     prefix="latent_overlay",
-    max_tsne_points=1000,
+    max_tsne_points=5000,
     random_state=42,
 ):
     """Plot PCA, t-SNE and UMAP projections with overlays - IMPROVED READABILITY."""
@@ -117,7 +117,7 @@ def plot_latent_overlay(
         base_idx = [j for j, s in enumerate(base_sources) if s == src]
         if base_idx:
             plt.scatter(base_umap2[base_idx, 0], base_umap2[base_idx, 1], 
-                       s=8, alpha=0.7, color=color_map[src], label=src,
+                       s=4, alpha=0.3, color=color_map[src], label=src,
                        edgecolors='none')  # Remove edge lines for cleaner look
     
     # Plot overlay features more prominently
