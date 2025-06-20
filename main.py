@@ -229,6 +229,7 @@ def main():
             output_dir=results_dir,
             prefix="detection_latent_space",
         )
+        
         # Detect anomalies
         print(f"Detecting potential ruins using {args.detection_method}...")
         ruins_gdf, _ = detect_anomalies(
@@ -248,7 +249,7 @@ def main():
             patch_sources=[os.path.basename(test_raster)] * len(features),
             output_path=csv_path
         )
-        
+
         
 if __name__ == "__main__":
     main()

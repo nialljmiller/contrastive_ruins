@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from sklearn.decomposition import PCA
-from sklearn.manifold import TSNE
 import umap
 
 def export_embeddings_to_csv(features, locations, patch_sources=None, output_path="embeddings.csv"):
@@ -41,13 +40,7 @@ def export_embeddings_to_csv(features, locations, patch_sources=None, output_pat
     pca_3d = PCA(n_components=3, random_state=69)
     pca_2d_coords = pca_2d.fit_transform(features)
     pca_3d_coords = pca_3d.fit_transform(features)
-    
-    print("Computing t-SNE...")
-    tsne_2d = TSNE(n_components=2, random_state=69, init='pca')
-    tsne_3d = TSNE(n_components=3, random_state=69, init='pca')
-    tsne_2d_coords = tsne_2d.fit_transform(features)
-    tsne_3d_coords = tsne_3d.fit_transform(features)
-    
+
     print("Computing UMAP...")
     umap_2d = umap.UMAP(n_components=2, random_state=69)
     umap_3d = umap.UMAP(n_components=3, random_state=69)
@@ -68,11 +61,6 @@ def export_embeddings_to_csv(features, locations, patch_sources=None, output_pat
         'pca_1': pca_2d_coords[:, 0],
         'pca_2': pca_2d_coords[:, 1],
         'pca_3': pca_3d_coords[:, 2],
-        
-        # t-SNE coordinates  
-        'tsne_1': tsne_2d_coords[:, 0],
-        'tsne_2': tsne_2d_coords[:, 1],
-        'tsne_3': tsne_3d_coords[:, 2],
         
         # UMAP coordinates
         'umap_1': umap_2d_coords[:, 0],

@@ -75,7 +75,7 @@ def plot_latent_overlay(
     overlay_sources=None,
     output_dir="results",
     prefix="latent_overlay",
-    max_tsne_points=10000,
+    max_tsne_points=1000,
     random_state=42,
 ):
     """Plot PCA, t-SNE and UMAP projections with overlays - IMPROVED READABILITY."""
@@ -103,6 +103,7 @@ def plot_latent_overlay(
               '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
     color_map = {src: colors[i % len(colors)] for i, src in enumerate(unique_sources)}
 
+    print("UMAP")
     # ----- 2D UMAP (IMPROVED) -----
     umap2 = umap.UMAP(n_components=2, random_state=42, n_neighbors=15, min_dist=0.1)
     base_umap2 = umap2.fit_transform(base_features)
@@ -144,6 +145,7 @@ def plot_latent_overlay(
                 bbox_inches='tight', dpi=300)
     plt.close()
 
+    print("3D UMAP")
     # ----- 3D UMAP (IMPROVED) -----
     umap3 = umap.UMAP(n_components=3, random_state=42, n_neighbors=15, min_dist=0.1)
     base_umap3 = umap3.fit_transform(base_features)
@@ -187,6 +189,9 @@ def plot_latent_overlay(
     plt.savefig(os.path.join(output_dir, f"{prefix}_umap_3d.png"), 
                 bbox_inches='tight', dpi=300)
     plt.close()
+
+
+
 
     # ----- 2D t-SNE (IMPROVED) -----
     combined = base_features if len(overlay_features) == 0 else np.vstack([base_features, overlay_features])
@@ -247,6 +252,8 @@ def plot_latent_overlay(
 def plot_latent_space_density(encoder, patches, patch_sources=None, output_dir="results", prefix="latent_density"):
     """Create density plots for better visualization of overlapping points."""
     
+    print("PCA")
+
     features = compute_embeddings(encoder, patches)
     
     # 2D PCA for density plot
