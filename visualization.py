@@ -105,7 +105,7 @@ def plot_latent_overlay(
 
     print("UMAP")
     # ----- 2D UMAP (IMPROVED) -----
-    umap2 = umap.UMAP(n_components=2, random_state=42, n_neighbors=15, min_dist=0.1)
+    umap2 = umap.UMAP(n_components=2, random_state=42, n_neighbors=15, min_dist=0.1, n_jobs=-1)
     base_umap2 = umap2.fit_transform(base_features)
     overlay_umap2 = umap2.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 2))
 
@@ -147,7 +147,7 @@ def plot_latent_overlay(
 
     print("3D UMAP")
     # ----- 3D UMAP (IMPROVED) -----
-    umap3 = umap.UMAP(n_components=3, random_state=42, n_neighbors=15, min_dist=0.1)
+    umap3 = umap.UMAP(n_components=3, random_state=42, n_neighbors=15, min_dist=0.1, n_jobs=-1)
     base_umap3 = umap3.fit_transform(base_features)
     overlay_umap3 = umap3.transform(overlay_features) if len(overlay_features) > 0 else np.empty((0, 3))
 
