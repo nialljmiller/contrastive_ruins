@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 # Import project modules
+from csv_export import export_embeddings_to_csv  # Add this line
 from data_loader import load_shapefiles, load_site_locations, get_raster_paths, sample_random_patches, sample_site_patches
 from data_preparation import create_contrastive_pairs, load_contrastive_pairs
 from model import train_siamese_model, load_models
@@ -237,6 +238,17 @@ def main():
             visualize=True,
             save_dir=results_dir
         )
+
+
+        print("Exporting embeddings to CSV...")
+        csv_path = os.path.join(results_dir, "embeddings_with_coordinates.csv")
+        export_embeddings_to_csv(
+            features=features,
+            locations=locations, 
+            patch_sources=[os.path.basename(test_raster)] * len(features),
+            output_path=csv_path
+        )
+        
         
 if __name__ == "__main__":
     main()
