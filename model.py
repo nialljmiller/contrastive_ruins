@@ -85,6 +85,8 @@ def train_siamese_model(
     plot_interval: int = 1,
     latent_interval: int | None = None,
     latent_sample_size: int = 1000,
+    latent_quick_interval: int | None = None,
+    latent_quick_size: int = 200,
 ):
     """Train Siamese network using PyTorch.
 
@@ -101,6 +103,8 @@ def train_siamese_model(
         plot_interval: Save loss plot every N epochs.
         latent_interval: If set, generate latent UMAP/t-SNE/PCA plots every N epochs.
         latent_sample_size: Number of patches to sample for latent plots.
+        latent_quick_interval: If set, generate quick latent plots every N epochs.
+        latent_quick_size: Sample size for quick latent plots.
     """
     X1_t = _prepare_tensor(X1)
     X2_t = _prepare_tensor(X2)
@@ -151,6 +155,16 @@ def train_siamese_model(
                     output_dir=save_dir,
                     prefix=f"latent_epoch_{epoch+1}",
                 )
+            if latent_quick_interval and (epoch + 1) % latent_quick_interval == 0:
+                sample_idx = np.random.choice(len(X1), min(latent_quick_size, len(X1)), replace=False)
+                sample_patches = X1[sample_idx]
+                emb = compute_embeddings(encoder, sample_patches)
+                plot_latent_overlay(
+                    emb,
+                    None,
+                    output_dir=save_dir,
+                    prefix=f"latent_quick_epoch_{epoch+1}",
+                )
     except KeyboardInterrupt:
         print("Training interrupted. Saving checkpoint...")
         ckpt.save(epoch, model, optimizer, history)
@@ -166,6 +180,11 @@ def train_siamese_model(
         sample_patches = X1[sample_idx]
         emb = compute_embeddings(encoder, sample_patches)
         plot_latent_overlay(emb, None, output_dir=save_dir, prefix="latent_final")
+    if latent_quick_interval:
+        sample_idx = np.random.choice(len(X1), min(latent_quick_size, len(X1)), replace=False)
+        sample_patches = X1[sample_idx]
+        emb = compute_embeddings(encoder, sample_patches)
+        plot_latent_overlay(emb, None, output_dir=save_dir, prefix="latent_quick_final")
 
     return encoder, model, history
 
@@ -198,4 +217,11 @@ if __name__ == "__main__":
     X1 = np.random.rand(10, 64, 64)
     X2 = np.random.rand(10, 64, 64)
     y = np.random.randint(0, 2, size=10)
-    train_siamese_model(X1, X2, y, epochs=1, latent_interval=None)
+    train_siamese_model(
+        X1,
+        X2,
+        y,
+        epochs=1,
+        latent_interval=None,
+        latent_quick_interval=None,
+    )

@@ -40,6 +40,10 @@ def setup_args():
                         help='Epoch interval for UMAP/t-SNE/PCA plots')
     parser.add_argument('--latent_sample_size', type=int, default=1000,
                         help='Number of patches to sample for latent plots')
+    parser.add_argument('--latent_quick_interval', type=int, default=10,
+                        help='Epoch interval for lightweight latent plots')
+    parser.add_argument('--latent_quick_size', type=int, default=200,
+                        help='Number of patches for quick latent plots')
     parser.add_argument('--detection_method', type=str, choices=['iforest', 'kmeans'], default='iforest',
                         help='Method for anomaly detection')
     parser.add_argument('--test_tile', type=str, default=None,
@@ -131,6 +135,8 @@ def main():
             checkpoint_dir=os.path.join(args.output_dir, "checkpoints"),
             latent_interval=args.latent_interval,
             latent_sample_size=args.latent_sample_size,
+            latent_quick_interval=args.latent_quick_interval,
+            latent_quick_size=args.latent_quick_size,
         )
 
         plot_training_loss(history, os.path.join(results_dir, "training_loss.png"))
