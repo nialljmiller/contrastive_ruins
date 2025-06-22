@@ -7,7 +7,11 @@ from typing import Optional
 import matplotlib.pyplot as plt
 
 from checkpoint import CheckpointManager
-from visualization import plot_training_loss
+from visualization import (
+    plot_training_loss,
+    compute_embeddings,
+    plot_latent_overlay,
+)
 
 
 class Encoder(nn.Module):
@@ -79,8 +83,29 @@ def train_siamese_model(
     checkpoint_dir: str | None = None,
     checkpoint_interval: int = 1,
     plot_interval: int = 1,
+    latent_interval: int | None = None,
+    latent_sample_size: int = 1000,
+    latent_quick_interval: int | None = None,
+    latent_quick_size: int = 200,
 ):
-    """Train Siamese network using PyTorch."""
+    """Train Siamese network using PyTorch.
+
+    Args:
+        X1, X2: Patch pairs for contrastive training.
+        labels: Pair labels (1=same, 0=different).
+        embedding_dim: Dimension of the encoder output.
+        epochs: Number of training epochs.
+        batch_size: Batch size for DataLoader.
+        margin: Contrastive loss margin.
+        save_dir: Directory to save models and plots.
+        checkpoint_dir: Directory for checkpoint files.
+        checkpoint_interval: Save checkpoint every N epochs.
+        plot_interval: Save loss plot every N epochs.
+        latent_interval: If set, generate latent UMAP/t-SNE/PCA plots every N epochs.
+        latent_sample_size: Number of patches to sample for latent plots.
+        latent_quick_interval: If set, generate quick latent plots every N epochs.
+        latent_quick_size: Sample size for quick latent plots.
+    """
     X1_t = _prepare_tensor(X1)
     X2_t = _prepare_tensor(X2)
     y_t = torch.from_numpy(labels).float()
@@ -120,6 +145,26 @@ def train_siamese_model(
                 ckpt.save(epoch, model, optimizer, history)
             if (epoch + 1) % plot_interval == 0:
                 plot_training_loss(history, os.path.join(save_dir, "training_history.png"))
+            if latent_interval and (epoch + 1) % latent_interval == 0:
+                sample_idx = np.random.choice(len(X1), min(latent_sample_size, len(X1)), replace=False)
+                sample_patches = X1[sample_idx]
+                emb = compute_embeddings(encoder, sample_patches)
+                plot_latent_overlay(
+                    emb,
+                    None,
+                    output_dir=save_dir,
+                    prefix=f"latent_epoch_{epoch+1}",
+                )
+            if latent_quick_interval and (epoch + 1) % latent_quick_interval == 0:
+                sample_idx = np.random.choice(len(X1), min(latent_quick_size, len(X1)), replace=False)
+                sample_patches = X1[sample_idx]
+                emb = compute_embeddings(encoder, sample_patches)
+                plot_latent_overlay(
+                    emb,
+                    None,
+                    output_dir=save_dir,
+                    prefix=f"latent_quick_epoch_{epoch+1}",
+                )
     except KeyboardInterrupt:
         print("Training interrupted. Saving checkpoint...")
         ckpt.save(epoch, model, optimizer, history)
@@ -130,6 +175,16 @@ def train_siamese_model(
     torch.save(model.state_dict(), os.path.join(save_dir, "siamese.pt"))
     ckpt.save(epochs - 1, model, optimizer, history)
     plot_training_loss(history, os.path.join(save_dir, "training_history.png"))
+    if latent_interval:
+        sample_idx = np.random.choice(len(X1), min(latent_sample_size, len(X1)), replace=False)
+        sample_patches = X1[sample_idx]
+        emb = compute_embeddings(encoder, sample_patches)
+        plot_latent_overlay(emb, None, output_dir=save_dir, prefix="latent_final")
+    if latent_quick_interval:
+        sample_idx = np.random.choice(len(X1), min(latent_quick_size, len(X1)), replace=False)
+        sample_patches = X1[sample_idx]
+        emb = compute_embeddings(encoder, sample_patches)
+        plot_latent_overlay(emb, None, output_dir=save_dir, prefix="latent_quick_final")
 
     return encoder, model, history
 
@@ -162,4 +217,11 @@ if __name__ == "__main__":
     X1 = np.random.rand(10, 64, 64)
     X2 = np.random.rand(10, 64, 64)
     y = np.random.randint(0, 2, size=10)
-    train_siamese_model(X1, X2, y, epochs=1)
+    train_siamese_model(
+        X1,
+        X2,
+        y,
+        epochs=1,
+        latent_interval=None,
+        latent_quick_interval=None,
+    )
