@@ -6,6 +6,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from typing import Optional
 import matplotlib.pyplot as plt
 
+from checkpoint import CheckpointManager
+from visualization import plot_training_loss
+
 
 class Encoder(nn.Module):
     """Simple convolutional encoder."""
@@ -64,14 +67,19 @@ def _prepare_tensor(x: np.ndarray) -> torch.Tensor:
     return torch.from_numpy(x).float()
 
 
-def train_siamese_model(X1: np.ndarray,
-                        X2: np.ndarray,
-                        labels: np.ndarray,
-                        embedding_dim: int = 128,
-                        epochs: int = 20,
-                        batch_size: int = 32,
-                        margin: float = 1.0,
-                        save_dir: str = "models"):
+def train_siamese_model(
+    X1: np.ndarray,
+    X2: np.ndarray,
+    labels: np.ndarray,
+    embedding_dim: int = 128,
+    epochs: int = 20,
+    batch_size: int = 32,
+    margin: float = 1.0,
+    save_dir: str = "models",
+    checkpoint_dir: str | None = None,
+    checkpoint_interval: int = 1,
+    plot_interval: int = 1,
+):
     """Train Siamese network using PyTorch."""
     X1_t = _prepare_tensor(X1)
     X2_t = _prepare_tensor(X2)
@@ -87,33 +95,41 @@ def train_siamese_model(X1: np.ndarray,
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-    history = []
+    if checkpoint_dir is None:
+        checkpoint_dir = os.path.join(save_dir, "checkpoints")
+    ckpt = CheckpointManager(checkpoint_dir)
+
+    start_epoch, history = ckpt.load(model, optimizer)
     model.train()
-    for epoch in range(epochs):
-        epoch_loss = 0.0
-        for a, b, lbl in loader:
-            a, b, lbl = a.to(device), b.to(device), lbl.to(device)
-            optimizer.zero_grad()
-            dist = model(a, b)
-            loss = contrastive_loss(lbl, dist, margin)
-            loss.backward()
-            optimizer.step()
-            epoch_loss += loss.item() * a.size(0)
-        epoch_loss /= len(loader.dataset)
-        history.append(epoch_loss)
-        print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f}")
+    try:
+        for epoch in range(start_epoch, epochs):
+            epoch_loss = 0.0
+            for a, b, lbl in loader:
+                a, b, lbl = a.to(device), b.to(device), lbl.to(device)
+                optimizer.zero_grad()
+                dist = model(a, b)
+                loss = contrastive_loss(lbl, dist, margin)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item() * a.size(0)
+            epoch_loss /= len(loader.dataset)
+            history.append(epoch_loss)
+            print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f}")
+
+            if (epoch + 1) % checkpoint_interval == 0:
+                ckpt.save(epoch, model, optimizer, history)
+            if (epoch + 1) % plot_interval == 0:
+                plot_training_loss(history, os.path.join(save_dir, "training_history.png"))
+    except KeyboardInterrupt:
+        print("Training interrupted. Saving checkpoint...")
+        ckpt.save(epoch, model, optimizer, history)
+        raise
 
     os.makedirs(save_dir, exist_ok=True)
     torch.save(encoder.state_dict(), os.path.join(save_dir, "encoder.pt"))
     torch.save(model.state_dict(), os.path.join(save_dir, "siamese.pt"))
-
-    plt.figure(figsize=(10, 5))
-    plt.plot(history)
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Training Loss")
-    plt.savefig(os.path.join(save_dir, "training_history.png"))
-    plt.close()
+    ckpt.save(epochs - 1, model, optimizer, history)
+    plot_training_loss(history, os.path.join(save_dir, "training_history.png"))
 
     return encoder, model, history
 

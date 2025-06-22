@@ -123,7 +123,8 @@ def main():
         encoder, siamese_model, history = train_siamese_model(
             X1, X2, labels,
             epochs=args.epochs,
-            save_dir=model_dir
+            save_dir=model_dir,
+            checkpoint_dir=os.path.join(args.output_dir, "checkpoints")
         )
 
         plot_training_loss(history, os.path.join(results_dir, "training_loss.png"))
