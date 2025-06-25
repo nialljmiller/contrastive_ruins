@@ -25,7 +25,7 @@ source ~/python_projects/venv/bin/activate
 mkdir -p logs
 
 # Run your Python script
-python -u main.py --n_samples 10000 --epochs 99999 --raster_limit 99999
+python -u main.py --n_samples 37000 --epochs 99999 --raster_limit 99999
 
 echo "Finished at: $(date)"
 
