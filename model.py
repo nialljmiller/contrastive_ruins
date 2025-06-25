@@ -117,6 +117,9 @@ def train_siamese_model(
     encoder = Encoder(input_channels=input_channels, embedding_dim=embedding_dim)
     model = SiameseNetwork(encoder)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.device_count() > 1 and device.type == "cuda":
+        print(f"Using {torch.cuda.device_count()} GPUs for training")
+        model = nn.DataParallel(model)
     model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
@@ -124,7 +127,10 @@ def train_siamese_model(
         checkpoint_dir = os.path.join(save_dir, "checkpoints")
     ckpt = CheckpointManager(checkpoint_dir)
 
-    start_epoch, history = ckpt.load(model, optimizer)
+    start_epoch, history = ckpt.load(
+        model.module if isinstance(model, nn.DataParallel) else model,
+        optimizer,
+    )
     model.train()
     try:
         for epoch in range(start_epoch, epochs):
@@ -142,7 +148,12 @@ def train_siamese_model(
             print(f"Epoch {epoch+1}/{epochs} - loss: {epoch_loss:.4f}")
 
             if (epoch + 1) % checkpoint_interval == 0:
-                ckpt.save(epoch, model, optimizer, history)
+                ckpt.save(
+                    epoch,
+                    model.module if isinstance(model, nn.DataParallel) else model,
+                    optimizer,
+                    history,
+                )
             if (epoch + 1) % plot_interval == 0:
                 plot_training_loss(history, os.path.join(save_dir, "training_history.png"))
             if latent_interval and (epoch + 1) % latent_interval == 0:
@@ -167,13 +178,26 @@ def train_siamese_model(
                 )
     except KeyboardInterrupt:
         print("Training interrupted. Saving checkpoint...")
-        ckpt.save(epoch, model, optimizer, history)
+        ckpt.save(
+            epoch,
+            model.module if isinstance(model, nn.DataParallel) else model,
+            optimizer,
+            history,
+        )
         raise
 
     os.makedirs(save_dir, exist_ok=True)
     torch.save(encoder.state_dict(), os.path.join(save_dir, "encoder.pt"))
-    torch.save(model.state_dict(), os.path.join(save_dir, "siamese.pt"))
-    ckpt.save(epochs - 1, model, optimizer, history)
+    torch.save(
+        model.module.state_dict() if isinstance(model, nn.DataParallel) else model.state_dict(),
+        os.path.join(save_dir, "siamese.pt"),
+    )
+    ckpt.save(
+        epochs - 1,
+        model.module if isinstance(model, nn.DataParallel) else model,
+        optimizer,
+        history,
+    )
     plot_training_loss(history, os.path.join(save_dir, "training_history.png"))
     if latent_interval:
         sample_idx = np.random.choice(len(X1), min(latent_sample_size, len(X1)), replace=False)
@@ -197,16 +221,25 @@ def load_models(save_dir: str = "models", device: Optional[torch.device] = None)
 
     encoder = Encoder()
     model = SiameseNetwork(encoder)
+    if torch.cuda.device_count() > 1 and device.type == "cuda":
+        model = nn.DataParallel(model)
     encoder_path = os.path.join(save_dir, "encoder.pt")
     siamese_path = os.path.join(save_dir, "siamese.pt")
     if os.path.exists(encoder_path):
         encoder.load_state_dict(torch.load(encoder_path, map_location="cpu"))
     if os.path.exists(siamese_path):
-        model.load_state_dict(torch.load(siamese_path, map_location="cpu"))
+        state = torch.load(siamese_path, map_location="cpu")
+        if isinstance(model, nn.DataParallel):
+            model.module.load_state_dict(state)
+        else:
+            model.load_state_dict(state)
 
     encoder.to(device)
     model.to(device)
-    model.encoder = encoder
+    if isinstance(model, nn.DataParallel):
+        model.module.encoder = encoder
+    else:
+        model.encoder = encoder
     encoder.eval()
     model.eval()
     
