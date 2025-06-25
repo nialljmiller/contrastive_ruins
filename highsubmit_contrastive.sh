@@ -7,7 +7,7 @@
 #SBATCH --qos=normal
 #SBATCH --gres=gpu:2
 #SBATCH --mem=128G
-#SBATCH --time=96:00:00
+#SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=48
 
 # Print info for debugging
