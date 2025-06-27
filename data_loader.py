@@ -182,7 +182,7 @@ def sample_site_patches(raster_paths, sites_gdf, patch_size=256, save_dir=None):
 
 if __name__ == "__main__":
     # Test the module
-    base_path = '/project/joycelab-niall/ruin_repo/'
+    base_path = '/project/galacticbulge/ruin_repo/'
     shapefiles = load_shapefiles(base_path)
     known_sites = load_site_locations(base_path)
     raster_paths = get_raster_paths(base_path, limit=2)  # Test with first 2 rasters
