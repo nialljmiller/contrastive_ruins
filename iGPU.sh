@@ -5,7 +5,7 @@ DEFAULT_TIME="2:00:00"
 
 # Default partition and account (adjust according to your use case)
 DEFAULT_PARTITION="mb-a30"
-DEFAULT_ACCOUNT="joycelab-niall"
+DEFAULT_ACCOUNT="galacticbulge"
 DEFAULT_QOS="interactive"
 
 # Function to request compute resources (Tier 1 - Lowest)
@@ -16,7 +16,7 @@ request_low() {
            --gres=gpu:1 \
            --mem=32G \
            --partition=mb-a30 \
-           --account=joycelab-niall \
+           --account=galacticbulge \
            --qos=interactive
 }
 
@@ -28,7 +28,7 @@ request_medium() {
            --gres=gpu:2 \
            --mem=64G \
            --partition=mb-a30 \
-           --account=joycelab-niall \
+           --account=galacticbulge \
            --qos=interactive
 }
 
@@ -40,7 +40,7 @@ request_high() {
            --gres=gpu:4 \
            --mem=128G \
            --partition=mb-a30 \
-           --account=joycelab-niall \
+           --account=galacticbulge \
            --qos=interactive
 }
 

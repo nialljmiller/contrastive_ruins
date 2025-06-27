@@ -3,7 +3,7 @@
 #SBATCH --output=logs/contrastive_%j.out
 #SBATCH --error=logs/contrastive_%j.err
 #SBATCH --partition=mb-h100
-#SBATCH --account=joycelab-niall
+#SBATCH --account=galacticbulge
 #SBATCH --qos=normal
 #SBATCH --gres=gpu:2
 #SBATCH --mem=128G

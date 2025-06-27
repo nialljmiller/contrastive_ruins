@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument(
         "--data_path",
         type=str,
-        default="/project/joycelab-niall/ruin_repo",
+        default="/project/galacticbulge/ruin_repo",
         help="Path to data directory",
     )
     parser.add_argument(

@@ -2,7 +2,7 @@ import rasterio
 import os
 
 # Check CRS of your raster files
-data_path = '/project/joycelab-niall/ruin_repo'
+data_path = '/project/galacticbulge/ruin_repo'
 raster_dir = os.path.join(data_path, 'rasters')
 
 for filename in ['Chaco_dem.tif', 'La_plata_dem.tif', 'Tile 1.tif']:

@@ -22,9 +22,9 @@ from visualization import (
 def setup_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Archaeological Ruins Detection')
-    parser.add_argument('--data_path', type=str, default='/project/joycelab-niall/ruin_repo',
+    parser.add_argument('--data_path', type=str, default='/project/galacticbulge/ruin_repo',
                         help='Path to data directory')
-    parser.add_argument('--output_dir', type=str, default='/project/joycelab-niall/ruin_repo/output',
+    parser.add_argument('--output_dir', type=str, default='/project/galacticbulge/ruin_repo/output',
                         help='Directory to save results')
     parser.add_argument('--mode', type=str, choices=['train', 'detect', 'full'], default='full',
                         help='Mode: train model, detect ruins, or run full pipeline')
