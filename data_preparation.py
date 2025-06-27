@@ -307,7 +307,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     
     # Load a single patch for testing
-    base_path = '/project/joycelab-niall/ruin_repo/rasters'
+    base_path = '/project/galacticbulge/ruin_repo/rasters'
     raster_paths = get_raster_paths(base_path, limit=1)
     patches, locations, _ = sample_random_patches(raster_paths, patch_size=256, n_samples=5)
     
