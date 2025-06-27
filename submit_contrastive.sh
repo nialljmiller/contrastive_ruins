@@ -3,12 +3,12 @@
 #SBATCH --output=logs/contrastive_%j.out
 #SBATCH --error=logs/contrastive_%j.err
 #SBATCH --partition=mb-a30
-#SBATCH --account=joycelab-niall
+#SBATCH --account=galacticbulge
 #SBATCH --qos=normal
 #SBATCH --gres=gpu:4
 #SBATCH --mem=128G
 #SBATCH --time=48:00:00
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=64
 
 # Print info for debugging
 echo "Job ID: $SLURM_JOB_ID"
