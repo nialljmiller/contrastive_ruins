@@ -2,3 +2,6 @@
 *.err
 __pycache__/**
 **.pyc
+
+# Large artifacts
+embeddings_with_coordinates.csv

@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument('--data_path', type=str, default='/project/galacticbulge/ruin_repo',
                         help='Base path to data')
     parser.add_argument('--csv_file', type=str, default='site_locations/site_locations.csv',
-                        help='Relative path to Sean's CSV')
+                        help='Relative path to Seans CSV')
     parser.add_argument('--grid_raster', type=str, default='rasters/Tile 1.tif',
                         help='Relative path to grid 3 raster')
     parser.add_argument('--target_rasters', nargs='+', default=['rasters/Chaco_dem.tif'],
