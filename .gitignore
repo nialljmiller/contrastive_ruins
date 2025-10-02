@@ -5,3 +5,6 @@ __pycache__/**
 
 # Large artifacts
 embeddings_with_coordinates.csv
+
+# Large artifacts
+embeddings_with_coordinates.csv
