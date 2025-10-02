@@ -136,33 +136,35 @@ def main():
     # Step 1: Load CSV
     sites_gdf = load_sites_csv(csv_path)
 
-    # Step 2: Verify/align CRS
-    sites_gdf, raster_crs = check_and_align_crs(grid_raster, sites_gdf)
+    for grid_rater in ['Tile 12.tif', 'Tile 16.tif', 'Tile 1.tif', 'Tile 3.tif', 'Tile 7.tif', 'Tile 13.tif', 'Tile 17.tif', 'Tile 20.tif', 'Tile 4.tif', 'Tile 8.tif', 'Tile 10.tif', 'Tile 14.tif', 'Tile 18.tif', 'Tile 2.tif', 'Tile 5.tif', 'Tile 9.tif', 'Tile 11.tif', 'Tile 15.tif', 'Tile 19.tif', 'Tile_3_hillshade.tif', 'Tile 6.tif']:
 
-    # Step 3: Extract site embeddings
-    site_embeddings = extract_site_embeddings(encoder, grid_raster, sites_gdf, args.patch_size)
+        # Step 2: Verify/align CRS
+        sites_gdf, raster_crs = check_and_align_crs(grid_raster, sites_gdf)
 
-    # Step 4: Compute prototype
-    prototype = compute_prototype(site_embeddings, args.use_medoid)
+        # Step 3: Extract site embeddings
+        site_embeddings = extract_site_embeddings(encoder, grid_raster, sites_gdf, args.patch_size)
 
-    # Step 5: Extract target features
-    target_features, target_locations = extract_target_features(
-        encoder, target_rasters, args.patch_size, args.stride
-    )
+        # Step 4: Compute prototype
+        prototype = compute_prototype(site_embeddings, args.use_medoid)
 
-    # Step 6: Find similar candidates
-    candidates_gdf = find_similar_candidates(
-        target_features, prototype, args.similarity_threshold, target_locations, raster_crs
-    )
+        # Step 5: Extract target features
+        target_features, target_locations = extract_target_features(
+            encoder, target_rasters, args.patch_size, args.stride
+        )
 
-    # Step 7: Filter known sites
-    novel_candidates = filter_known_sites(candidates_gdf, sites_gdf, args.buffer_distance)
+        # Step 6: Find similar candidates
+        candidates_gdf = find_similar_candidates(
+            target_features, prototype, args.similarity_threshold, target_locations, raster_crs
+        )
 
-    # Step 8: Export
-    export_results(novel_candidates, output_dir)
+        # Step 7: Filter known sites
+        novel_candidates = filter_known_sites(candidates_gdf, sites_gdf, args.buffer_distance)
 
-    # Optional: Visualize
-    visualize_embeddings(site_embeddings, target_features, output_dir)
+        # Step 8: Export
+        export_results(novel_candidates, output_dir)
+
+        # Optional: Visualize
+        visualize_embeddings(site_embeddings, target_features, output_dir)
 
 if __name__ == "__main__":
     main()
