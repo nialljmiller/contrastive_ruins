@@ -1,17 +1,27 @@
 """Supervised classifier training on encoder embeddings."""
 import argparse
+import json
 import os
-from typing import List, Sequence, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 import geopandas as gpd
 import joblib
 import numpy as np
 import pandas as pd
 import rasterio
+from matplotlib import pyplot as plt
 from shapely.geometry import Point, box
 from shapely.ops import unary_union
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, roc_auc_score
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    precision_recall_fscore_support,
+    roc_auc_score,
+    roc_curve,
+)
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -126,6 +136,12 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="models/embedding_classifier.joblib",
         help="Path (relative to data_path) where the classifier pipeline will be stored",
+    )
+    parser.add_argument(
+        "--results_dir",
+        type=str,
+        default="reports/embedding_classifier",
+        help="Directory (relative to data_path) where diagnostics will be written",
     )
     parser.add_argument(
         "--save_embeddings",
@@ -257,6 +273,87 @@ def build_classifier_pipeline(standardize: bool) -> Pipeline:
     return Pipeline(steps)
 
 
+def ensure_dir(path: str) -> None:
+    if path:
+        os.makedirs(path, exist_ok=True)
+
+
+def save_classification_report(report: str, results_dir: str) -> str:
+    ensure_dir(results_dir)
+    report_path = os.path.join(results_dir, "validation_report.txt")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report)
+    return report_path
+
+
+def plot_confusion_matrix(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    results_dir: str,
+) -> str:
+    ensure_dir(results_dir)
+    cm = confusion_matrix(y_true, y_pred)
+    fig, ax = plt.subplots()
+    disp = ConfusionMatrixDisplay(cm, display_labels=["Background", "Site"])
+    disp.plot(cmap="Blues", ax=ax, colorbar=False)
+    ax.set_title("Validation Confusion Matrix")
+    fig.tight_layout()
+    output_path = os.path.join(results_dir, "confusion_matrix.png")
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+    return output_path
+
+
+def plot_roc_curve(
+    y_true: np.ndarray,
+    y_scores: np.ndarray,
+    results_dir: str,
+) -> Tuple[str, float]:
+    ensure_dir(results_dir)
+    fpr, tpr, _ = roc_curve(y_true, y_scores)
+    auc = roc_auc_score(y_true, y_scores)
+    fig, ax = plt.subplots()
+    ax.plot(fpr, tpr, label=f"ROC curve (AUC = {auc:.3f})")
+    ax.plot([0, 1], [0, 1], "k--", label="Chance")
+    ax.set_xlabel("False Positive Rate")
+    ax.set_ylabel("True Positive Rate")
+    ax.set_title("Validation ROC Curve")
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    output_path = os.path.join(results_dir, "roc_curve.png")
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+    return output_path, auc
+
+
+def plot_probability_histogram(
+    y_true: np.ndarray,
+    y_scores: np.ndarray,
+    results_dir: str,
+) -> str:
+    ensure_dir(results_dir)
+    fig, ax = plt.subplots()
+    ax.hist(y_scores[y_true == 1], bins=30, alpha=0.6, label="Sites")
+    ax.hist(y_scores[y_true == 0], bins=30, alpha=0.6, label="Background")
+    ax.set_xlabel("Predicted Probability of Site")
+    ax.set_ylabel("Count")
+    ax.set_title("Validation Probability Distribution")
+    ax.legend()
+    fig.tight_layout()
+    output_path = os.path.join(results_dir, "probability_histogram.png")
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
+    return output_path
+
+
+def write_metrics(metrics: Dict[str, float], results_dir: str) -> str:
+    ensure_dir(results_dir)
+    metrics_path = os.path.join(results_dir, "metrics.json")
+    with open(metrics_path, "w", encoding="utf-8") as f:
+        json.dump(metrics, f, indent=2)
+    return metrics_path
+
+
 def main() -> None:
     args = parse_args()
     data_path = args.data_path
@@ -264,6 +361,7 @@ def main() -> None:
     site_rasters = [os.path.join(data_path, r) for r in args.site_rasters]
     background_rasters = [os.path.join(data_path, r) for r in args.background_rasters]
     output_path = os.path.join(data_path, args.output_path)
+    results_dir = os.path.join(data_path, args.results_dir)
     embeddings_path = os.path.join(data_path, args.save_embeddings) if args.save_embeddings else None
 
     print("Loading encoder…")
@@ -314,12 +412,36 @@ def main() -> None:
     y_pred = pipeline.predict(X_val)
     report = classification_report(y_val, y_pred, digits=3)
     print("Validation report:\n" + report)
+    report_path = save_classification_report(report, results_dir)
+    print(f"Saved classification report to {report_path}")
 
     classifier = pipeline.named_steps["clf"]
+    metrics: Dict[str, float] = {}
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        y_val, y_pred, average="binary"
+    )
+    accuracy = accuracy_score(y_val, y_pred)
+    metrics.update(
+        {
+            "accuracy": float(accuracy),
+            "precision": float(precision),
+            "recall": float(recall),
+            "f1": float(f1),
+        }
+    )
+    cm_path = plot_confusion_matrix(y_val, y_pred, results_dir)
+    print(f"Saved confusion matrix plot to {cm_path}")
+
     if hasattr(classifier, "predict_proba"):
         y_proba = pipeline.predict_proba(X_val)[:, 1]
-        auc = roc_auc_score(y_val, y_proba)
+        roc_path, auc = plot_roc_curve(y_val, y_proba, results_dir)
         print(f"Validation ROC AUC: {auc:.3f}")
+        print(f"Saved ROC curve to {roc_path}")
+        prob_hist_path = plot_probability_histogram(y_val, y_proba, results_dir)
+        print(f"Saved probability histogram to {prob_hist_path}")
+        metrics["roc_auc"] = auc
+    metrics_path = write_metrics(metrics, results_dir)
+    print(f"Saved metrics summary to {metrics_path}")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     joblib.dump(pipeline, output_path)
