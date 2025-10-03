@@ -170,7 +170,7 @@ def main():
             # Optional: Visualize
             visualize_embeddings(site_embeddings, target_features, output_dir)
 
-        except exception as e:
+        except Exception as e:
             print(repr(e))
             print(file_grid_raster)
 
