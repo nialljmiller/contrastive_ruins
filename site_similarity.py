@@ -136,7 +136,7 @@ def main():
     # Step 1: Load CSV
     sites_gdf = load_sites_csv(csv_path)
 
-    for file_grid_raster in ['Tile 12.tif', 'Tile 16.tif', 'Tile 1.tif', 'Tile 3.tif', 'Tile 7.tif', 'Tile 13.tif', 'Tile 17.tif', 'Tile 20.tif', 'Tile 4.tif', 'Tile 8.tif', 'Tile 10.tif', 'Tile 14.tif', 'Tile 18.tif', 'Tile 2.tif', 'Tile 5.tif', 'Tile 9.tif', 'Tile 11.tif', 'Tile 15.tif', 'Tile 19.tif', 'Tile_3_hillshade.tif', 'Tile 6.tif']:
+    for file_grid_raster in ['rasters/Tile 12.tif', 'rasters/Tile 16.tif', 'rasters/Tile 1.tif', 'rasters/Tile 3.tif', 'rasters/Tile 7.tif', 'rasters/Tile 13.tif', 'rasters/Tile 17.tif', 'rasters/Tile 20.tif', 'rasters/Tile 4.tif', 'rasters/Tile 8.tif', 'rasters/Tile 10.tif', 'rasters/Tile 14.tif', 'rasters/Tile 18.tif', 'rasters/Tile 2.tif', 'rasters/Tile 5.tif', 'rasters/Tile 9.tif', 'rasters/Tile 11.tif', 'rasters/Tile 15.tif', 'rasters/Tile 19.tif', 'rasters/Tile_3_hillshade.tif', 'rasters/Tile 6.tif']:
 
         grid_raster = os.path.join(data_path, file_grid_raster)
 
