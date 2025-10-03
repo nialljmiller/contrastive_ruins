@@ -138,35 +138,41 @@ def main():
 
     for file_grid_raster in ['rasters/Tile 12.tif', 'rasters/Tile 16.tif', 'rasters/Tile 1.tif', 'rasters/Tile 3.tif', 'rasters/Tile 7.tif', 'rasters/Tile 13.tif', 'rasters/Tile 17.tif', 'rasters/Tile 20.tif', 'rasters/Tile 4.tif', 'rasters/Tile 8.tif', 'rasters/Tile 10.tif', 'rasters/Tile 14.tif', 'rasters/Tile 18.tif', 'rasters/Tile 2.tif', 'rasters/Tile 5.tif', 'rasters/Tile 9.tif', 'rasters/Tile 11.tif', 'rasters/Tile 15.tif', 'rasters/Tile 19.tif', 'rasters/Tile_3_hillshade.tif', 'rasters/Tile 6.tif']:
 
-        grid_raster = os.path.join(data_path, file_grid_raster)
+        try:
 
-        # Step 2: Verify/align CRS
-        sites_gdf, raster_crs = check_and_align_crs(grid_raster, sites_gdf)
+            grid_raster = os.path.join(data_path, file_grid_raster)
 
-        # Step 3: Extract site embeddings
-        site_embeddings = extract_site_embeddings(encoder, grid_raster, sites_gdf, args.patch_size)
+            # Step 2: Verify/align CRS
+            sites_gdf, raster_crs = check_and_align_crs(grid_raster, sites_gdf)
 
-        # Step 4: Compute prototype
-        prototype = compute_prototype(site_embeddings, args.use_medoid)
+            # Step 3: Extract site embeddings
+            site_embeddings = extract_site_embeddings(encoder, grid_raster, sites_gdf, args.patch_size)
 
-        # Step 5: Extract target features
-        target_features, target_locations = extract_target_features(
-            encoder, target_rasters, args.patch_size, args.stride
-        )
+            # Step 4: Compute prototype
+            prototype = compute_prototype(site_embeddings, args.use_medoid)
 
-        # Step 6: Find similar candidates
-        candidates_gdf = find_similar_candidates(
-            target_features, prototype, args.similarity_threshold, target_locations, raster_crs
-        )
+            # Step 5: Extract target features
+            target_features, target_locations = extract_target_features(
+                encoder, target_rasters, args.patch_size, args.stride
+            )
 
-        # Step 7: Filter known sites
-        novel_candidates = filter_known_sites(candidates_gdf, sites_gdf, args.buffer_distance)
+            # Step 6: Find similar candidates
+            candidates_gdf = find_similar_candidates(
+                target_features, prototype, args.similarity_threshold, target_locations, raster_crs
+            )
 
-        # Step 8: Export
-        export_results(novel_candidates, output_dir)
+            # Step 7: Filter known sites
+            novel_candidates = filter_known_sites(candidates_gdf, sites_gdf, args.buffer_distance)
 
-        # Optional: Visualize
-        visualize_embeddings(site_embeddings, target_features, output_dir)
+            # Step 8: Export
+            export_results(novel_candidates, output_dir)
+
+            # Optional: Visualize
+            visualize_embeddings(site_embeddings, target_features, output_dir)
+
+        except exception as e:
+            print(repr(e))
+            print(file_grid_raster)
 
 if __name__ == "__main__":
     main()
