@@ -93,7 +93,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--negatives_per_raster",
         type=int,
-        default=500,
+        default=5000,
         help="Number of random background patches sampled per raster",
     )
     parser.add_argument(
@@ -111,7 +111,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--embedding_batch",
         type=int,
-        default=64,
+        default=512,
         help="Batch size for embedding inference",
     )
     parser.add_argument(
