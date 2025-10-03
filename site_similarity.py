@@ -136,7 +136,9 @@ def main():
     # Step 1: Load CSV
     sites_gdf = load_sites_csv(csv_path)
 
-    for grid_rater in ['Tile 12.tif', 'Tile 16.tif', 'Tile 1.tif', 'Tile 3.tif', 'Tile 7.tif', 'Tile 13.tif', 'Tile 17.tif', 'Tile 20.tif', 'Tile 4.tif', 'Tile 8.tif', 'Tile 10.tif', 'Tile 14.tif', 'Tile 18.tif', 'Tile 2.tif', 'Tile 5.tif', 'Tile 9.tif', 'Tile 11.tif', 'Tile 15.tif', 'Tile 19.tif', 'Tile_3_hillshade.tif', 'Tile 6.tif']:
+    for file_grid_raster in ['Tile 12.tif', 'Tile 16.tif', 'Tile 1.tif', 'Tile 3.tif', 'Tile 7.tif', 'Tile 13.tif', 'Tile 17.tif', 'Tile 20.tif', 'Tile 4.tif', 'Tile 8.tif', 'Tile 10.tif', 'Tile 14.tif', 'Tile 18.tif', 'Tile 2.tif', 'Tile 5.tif', 'Tile 9.tif', 'Tile 11.tif', 'Tile 15.tif', 'Tile 19.tif', 'Tile_3_hillshade.tif', 'Tile 6.tif']:
+
+        grid_raster = os.path.join(data_path, file_grid_raster)
 
         # Step 2: Verify/align CRS
         sites_gdf, raster_crs = check_and_align_crs(grid_raster, sites_gdf)
