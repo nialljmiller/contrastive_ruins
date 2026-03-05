@@ -63,7 +63,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data_path",
         type=str,
-        default="/project/galacticbulge/ruin_repo",
+        default="/cluster/medbow/project/galacticbulge/ruin_repo",
         help="Base directory that contains rasters, models, etc.",
     )
     parser.add_argument(
